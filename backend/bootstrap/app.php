@@ -33,11 +33,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\CheckRole::class,
             '2fa' => \App\Http\Middleware\Require2FA::class,
             'super_admin_ip' => \App\Http\Middleware\CheckSuperAdminIP::class,
+            'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
         ]);
 
-        // Apply security headers globally to API routes
+        // Apply security headers and session tracking globally to API routes
         $middleware->appendToGroup('api', [
             \App\Http\Middleware\SecurityHeaders::class,
+            \App\Http\Middleware\TrackSessionActivity::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

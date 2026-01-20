@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Mail\PasswordResetMail;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
@@ -44,12 +46,14 @@ class PasswordResetController extends Controller
             'created_at' => now()
         ]);
 
-        // TODO: Send email with reset link
-        // Mail::to($user)->send(new PasswordResetMail($token));
+        // Generate reset URL
+        $resetUrl = config('app.frontend_url') . '/reset-password?token=' . $token . '&email=' . urlencode($request->email);
+
+        // Send email
+        Mail::to($user)->send(new PasswordResetMail($token, $request->email, $resetUrl));
 
         return response()->json([
-            'message' => 'If an account with that email exists, a password reset link has been sent.',
-            'token' => $token // REMOVE IN PRODUCTION: Only for testing
+            'message' => 'If an account with that email exists, a password reset link has been sent.'
         ]);
     }
 

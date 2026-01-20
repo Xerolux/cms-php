@@ -24,6 +24,8 @@ use App\Http\Controllers\Api\V1\AIController;
 use App\Http\Controllers\Api\V1\PostShareController;
 use App\Http\Controllers\Api\V1\PluginController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
+use App\Http\Controllers\Api\V1\EmailVerificationController;
+use App\Http\Controllers\Api\V1\SessionController;
 use App\Http\Controllers\NewsletterSubscriptionController;
 use App\Http\Controllers\SitemapController;
 
@@ -33,9 +35,17 @@ Route::prefix('v1')->group(function () {
         return response()->json(['status' => 'ok', 'timestamp' => now()]);
     })->withoutMiddleware('throttle:api');
 
+    // Registration (public)
+    Route::post('/auth/register', [AuthController::class, 'register'])
+        ->middleware('throttle:5,1'); // 5 registrations per minute
+
     // Login mit striktem Rate Limit (5 Versuche/Minute)
     Route::post('/auth/login', [AuthController::class, 'login'])
         ->middleware('throttle:5,1');
+
+    // Email Verification (public)
+    Route::post('/auth/email/verify', [EmailVerificationController::class, 'verify'])
+        ->middleware('throttle:10,1');
 
     // Password Reset (public)
     Route::post('/auth/password/reset-request', [PasswordResetController::class, 'requestReset'])
@@ -69,6 +79,20 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/auth/refresh', [AuthController::class, 'refresh']);
         Route::get('/auth/me', [AuthController::class, 'me']);
+        Route::post('/auth/logout', [AuthController::class, 'logout']);
+
+        // Email Verification (authenticated)
+        Route::post('/auth/email/resend', [EmailVerificationController::class, 'sendVerificationEmail'])
+            ->middleware('throttle:3,1'); // 3 resends per minute
+        Route::get('/auth/email/status', [EmailVerificationController::class, 'status']);
+
+        // Session Management
+        Route::prefix('sessions')->group(function () {
+            Route::get('/', [SessionController::class, 'index']);
+            Route::delete('/{tokenId}', [SessionController::class, 'destroy']);
+            Route::delete('/', [SessionController::class, 'destroyAll']);
+            Route::post('/heartbeat', [SessionController::class, 'heartbeat']);
+        });
 
         // User management - Admin only
         Route::apiResource('users', UserController::class)
