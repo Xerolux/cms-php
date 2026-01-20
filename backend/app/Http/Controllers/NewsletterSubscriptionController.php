@@ -3,8 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\NewsletterSubscriber;
+use App\Mail\NewsletterConfirmation;
+use App\Mail\NewsletterWelcome;
+use App\Mail\NewsletterGoodbye;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Mail;
 
 class NewsletterSubscriptionController extends Controller
 {
@@ -56,8 +60,13 @@ class NewsletterSubscriptionController extends Controller
             'referrer' => $request->headers->get('referer'),
         ]);
 
-        // TODO: Send confirmation email
-        // Mail::to($subscriber->email)->send(new NewsletterConfirmation($subscriber));
+        // Send confirmation email
+        try {
+            Mail::to($subscriber->email)->send(new NewsletterConfirmation($subscriber));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send newsletter confirmation email: ' . $e->getMessage());
+            // We still return success as the subscription was created
+        }
 
         return response()->json([
             'message' => 'Please check your email to confirm your subscription',
@@ -79,8 +88,12 @@ class NewsletterSubscriptionController extends Controller
 
         $subscriber->confirm();
 
-        // TODO: Send welcome email
-        // Mail::to($subscriber->email)->send(new NewsletterWelcome($subscriber));
+        // Send welcome email
+        try {
+            Mail::to($subscriber->email)->send(new NewsletterWelcome($subscriber));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send newsletter welcome email: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Subscription confirmed successfully',
@@ -102,8 +115,12 @@ class NewsletterSubscriptionController extends Controller
 
         $subscriber->unsubscribe();
 
-        // TODO: Send goodbye email
-        // Mail::to($subscriber->email)->send(new NewsletterGoodbye($subscriber));
+        // Send goodbye email
+        try {
+            Mail::to($subscriber->email)->send(new NewsletterGoodbye($subscriber));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send newsletter goodbye email: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'You have been successfully unsubscribed',
