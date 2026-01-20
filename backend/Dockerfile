@@ -29,9 +29,19 @@ COPY . .
 # Install dependencies
 RUN composer install --no-interaction --optimize-autoloader --no-dev --no-scripts
 
+# Create storage directories if they don't exist
+RUN mkdir -p /var/www/html/storage \
+    /var/www/html/storage/framework \
+    /var/www/html/storage/framework/cache \
+    /var/www/html/storage/framework/sessions \
+    /var/www/html/storage/framework/views \
+    /var/www/html/storage/logs \
+    /var/www/html/bootstrap/cache
+
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage
+    && chmod -R 775 /var/www/html/storage \
+    && chmod -R 775 /var/www/html/bootstrap/cache
 
 # Expose port 9000 for PHP-FPM
 EXPOSE 9000
