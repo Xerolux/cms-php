@@ -27,6 +27,20 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo(function () {
             return '/dashboard';
         });
+
+        // Register middleware aliases
+        $middleware->alias([
+            'role' => \App\Http\Middleware\CheckRole::class,
+            '2fa' => \App\Http\Middleware\Require2FA::class,
+            'super_admin_ip' => \App\Http\Middleware\CheckSuperAdminIP::class,
+            'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
+        ]);
+
+        // Apply security headers and session tracking globally to API routes
+        $middleware->appendToGroup('api', [
+            \App\Http\Middleware\SecurityHeaders::class,
+            \App\Http\Middleware\TrackSessionActivity::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Return JSON 401 for API routes instead of redirecting
