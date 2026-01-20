@@ -5,11 +5,19 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\PageView;
 use App\Models\Post;
+use App\Services\GeoIpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AnalyticsController extends Controller
 {
+    protected GeoIpService $geoIpService;
+
+    public function __construct(GeoIpService $geoIpService)
+    {
+        $this->geoIpService = $geoIpService;
+    }
+
     /**
      * Track einen Page View
      */
@@ -21,7 +29,11 @@ class AnalyticsController extends Controller
         ]);
 
         $userAgent = $request->userAgent();
-        $ipAddress = $this->anonymizeIp($request->ip());
+        // Use real IP for GeoIP lookup before anonymizing
+        $realIp = $request->ip();
+        $countryCode = $this->geoIpService->getCountryCode($realIp);
+
+        $ipAddress = $this->anonymizeIp($realIp);
 
         $pageView = PageView::create([
             'post_id' => $validated['post_id'] ?? null,
@@ -29,7 +41,7 @@ class AnalyticsController extends Controller
             'ip_address' => $ipAddress,
             'user_agent' => $userAgent,
             'referer' => $request->headers->get('referer'),
-            'country_code' => null, // TODO: GeoIP Integration
+            'country_code' => $countryCode,
             'device_type' => PageView::detectDeviceType($userAgent),
             'browser' => PageView::detectBrowser($userAgent),
             'user_id' => auth()->id(),
@@ -141,16 +153,52 @@ class AnalyticsController extends Controller
 
         $views = PageView::with(['post', 'user'])
             ->where('viewed_at', '>=', now()->sub($period))
+            ->orderBy('viewed_at', 'desc')
             ->get();
 
         $filename = 'analytics_' . now()->format('Y-m-d') . '.csv';
 
-        // TODO: CSV Export implementieren
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
 
-        return response()->json([
-            'message' => 'Export functionality to be implemented',
-            'count' => $views->count(),
-        ]);
+        $callback = function () use ($views) {
+            $file = fopen('php://output', 'w');
+
+            // Header
+            fputcsv($file, [
+                'ID',
+                'Date',
+                'Page URL',
+                'Post Title',
+                'Device',
+                'Browser',
+                'Country',
+                'Referer'
+            ]);
+
+            // Rows
+            foreach ($views as $view) {
+                fputcsv($file, [
+                    $view->id,
+                    $view->viewed_at,
+                    $view->page_url,
+                    $view->post ? $view->post->title : '-',
+                    $view->device_type,
+                    $view->browser,
+                    $view->country_code ?? '-',
+                    $view->referer
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     /**
