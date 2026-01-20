@@ -33,7 +33,6 @@ Thumbs.db
 # Docker
 .dockerignore
 Dockerfile
-nginx.conf
 
 # Tests
 coverage/
