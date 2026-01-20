@@ -43,8 +43,12 @@
 ### Testing
 - Ran frontend tests (`npm run test:run`) -> **PASSED** (3 tests, including new RegisterPage test).
 - Verified Frontend pages via screenshots using Playwright scripts.
+- Implemented Backend Feature Tests:
+  - `backend/tests/Feature/AuthTest.php`: Registration, Login, Logout, Profile.
+  - `backend/tests/Feature/PostTest.php`: Public view, Auth create/update/delete.
 
 ## Next Steps for User
 - Rebuild docker containers: `docker-compose up -d --build`.
 - Run `php artisan migrate` in the backend container if not done.
+- Run `php artisan test` in the backend container to execute the new feature tests.
 - Set up mail environment variables in `.env`.
