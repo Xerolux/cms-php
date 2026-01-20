@@ -12,10 +12,11 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libpq-dev \
     postgresql-client \
+    default-mysql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd zip
+RUN docker-php-ext-install pdo pdo_pgsql pdo_mysql mbstring exif pcntl bcmath gd zip
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -43,7 +44,12 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/storage \
     && chmod -R 775 /var/www/html/bootstrap/cache
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Expose port 9000 for PHP-FPM
 EXPOSE 9000
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["php-fpm"]
