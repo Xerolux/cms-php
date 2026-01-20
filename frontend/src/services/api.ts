@@ -72,6 +72,21 @@ const authService = {
 
   isAuthenticated() {
     return !!localStorage.getItem('auth_token');
+  },
+
+  async requestPasswordReset(email: string) {
+    const { data } = await api.post('/auth/password/reset-request', { email });
+    return data;
+  },
+
+  async resetPassword(email: string, token: string, password: string, password_confirmation: string) {
+    const { data } = await api.post('/auth/password/reset', {
+      email,
+      token,
+      password,
+      password_confirmation
+    });
+    return data;
   }
 };
 

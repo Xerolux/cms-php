@@ -112,13 +112,20 @@ const LoginPage: React.FC = () => {
             </Button>
           </Form.Item>
 
-          <div style={{ textAlign: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+             <Button
+              type="link"
+              onClick={() => navigate('/forgot-password')}
+              style={{ padding: 0 }}
+            >
+              Passwort vergessen?
+            </Button>
             <Button
               type="link"
               onClick={() => navigate('/')}
               style={{ padding: 0 }}
             >
-              Zurück zur Startseite
+              Startseite
             </Button>
           </div>
         </Form>
