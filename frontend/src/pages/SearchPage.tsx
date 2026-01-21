@@ -529,7 +529,7 @@ const SearchPage: React.FC = () => {
             <Checkbox.Group
               style={{ width: '100%', marginTop: 8, display: 'flex', flexDirection: 'column' }}
               value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value as string[])}
+              onChange={(values) => setSelectedStatus(values as string[])}
             >
               <Checkbox value="draft">Draft</Checkbox>
               <Checkbox value="published">Published</Checkbox>

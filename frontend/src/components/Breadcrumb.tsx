@@ -42,12 +42,17 @@ const Breadcrumb: React.FC = () => {
     return null; // Don't show on home page
   }
 
-  const itemRender = (item: BreadcrumbItem) => {
-    const isLast = item.path === location.pathname;
+  const itemRender = (
+    route: any,
+    params: any,
+    routes: any[],
+    paths: string[]
+  ) => {
+    const isLast = routes.indexOf(route) === routes.length - 1;
     return isLast ? (
-      <span>{item.name}</span>
+      <span>{route.name}</span>
     ) : (
-      <Link to={item.path}>{item.name}</Link>
+      <Link to={route.path}>{route.name}</Link>
     );
   };
 

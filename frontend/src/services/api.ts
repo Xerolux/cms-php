@@ -930,7 +930,7 @@ const postRevisionService = {
   },
 
   async create(postId: number, data: any) {
-    const { response } = await api.post(`/posts/${postId}/revisions`, data);
+    const { data: response } = await api.post(`/posts/${postId}/revisions`, data);
     return response;
   },
 

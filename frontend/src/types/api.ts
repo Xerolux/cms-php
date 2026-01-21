@@ -42,7 +42,7 @@ export interface Post {
   excerpt?: string;
   featured_image_id?: number;
   category_id?: number;
-  status: 'draft' | 'published' | 'scheduled' | 'hidden';
+  status: 'draft' | 'published' | 'scheduled' | 'hidden' | 'pending_review' | 'changes_requested' | 'approved';
   published_at?: string;
   created_at: string;
   updated_at: string;
@@ -231,7 +231,7 @@ export interface PostFormData {
   category_id?: number;
   tags?: number[];
   featured_image_id?: number;
-  status: 'draft' | 'published' | 'scheduled' | 'hidden';
+  status: 'draft' | 'published' | 'scheduled' | 'hidden' | 'pending_review' | 'changes_requested' | 'approved';
   published_at?: string;
 }
 

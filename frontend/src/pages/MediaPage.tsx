@@ -38,7 +38,6 @@ import {
   AppstoreOutlined,
   BarsOutlined,
   SearchOutlined,
-  CropOutlined,
   RotateLeftOutlined,
   RotateRightOutlined,
   SyncOutlined,

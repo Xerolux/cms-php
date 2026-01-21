@@ -40,7 +40,8 @@ import { socialMediaService, postService } from '../services/api';
 import type { SocialShare, SocialMediaStats, Post } from '../types/api';
 import dayjs from 'dayjs';
 
-const { Text, TextArea } = Typography;
+const { Text } = Typography;
+const { TextArea } = Input;
 const { Option } = Select;
 
 const PostSharingPage: React.FC = () => {
@@ -416,7 +417,7 @@ const PostSharingPage: React.FC = () => {
               rows={3}
               placeholder="Add a custom message for your social media post..."
               value={customMessage}
-              onChange={(e) => setCustomMessage(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCustomMessage(e.target.value)}
               maxLength={280}
               showCount
               style={{ marginTop: 8 }}

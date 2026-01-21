@@ -30,9 +30,9 @@ const SessionTimeoutWarning: React.FC<SessionTimeoutWarningProps> = ({
     const TIMEOUT_MS = timeout * 60 * 1000;
     const WARNING_MS = warningTime * 60 * 1000;
 
-    let timeoutId: NodeJS.Timeout;
-    let warningTimeoutId: NodeJS.Timeout;
-    let intervalId: NodeJS.Timeout;
+    let timeoutId: number;
+    let warningTimeoutId: number;
+    let intervalId: number;
 
     const resetTimer = () => {
       clearTimeout(timeoutId);
