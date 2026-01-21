@@ -158,8 +158,8 @@
 git clone https://github.com/xquantoria/xquantoria.git
 cd xquantoria
 docker compose up -d
-docker exec cms-backend php artisan migrate --force
-docker exec cms-backend php artisan db:seed --force
+docker exec xquantoria-backend php artisan migrate --force
+docker exec xquantoria-backend php artisan db:seed --force
 ```
 
 ### Access the Application
@@ -233,8 +233,8 @@ docker compose up -d
 ### Step 4: Run Migrations
 
 ```bash
-docker exec cms-backend php artisan migrate --force
-docker exec cms-backend php artisan db:seed --force
+docker exec xquantoria-backend php artisan migrate --force
+docker exec xquantoria-backend php artisan db:seed --force
 ```
 
 ### Step 5: Verify Installation
@@ -247,7 +247,7 @@ docker compose ps
 curl http://localhost/api/v1/health
 
 # Check scheduler is running
-docker logs cms-scheduler
+docker logs xquantoria-scheduler
 ```
 
 ---
@@ -423,8 +423,8 @@ npm run test         # Run tests
 
 ```bash
 # Backend Tests (PHPUnit)
-docker exec cms-backend php artisan test
-docker exec cms-backend php artisan test --filter PostTest
+docker exec xquantoria-backend php artisan test
+docker exec xquantoria-backend php artisan test --filter PostTest
 
 # Frontend Tests (Vitest)
 cd frontend
@@ -457,9 +457,9 @@ npm run test:ui
 
 4. **Run Optimizations:**
    ```bash
-   docker exec cms-backend php artisan config:cache
-   docker exec cms-backend php artisan route:cache
-   docker exec cms-backend php artisan view:cache
+   docker exec xquantoria-backend php artisan config:cache
+   docker exec xquantoria-backend php artisan route:cache
+   docker exec xquantoria-backend php artisan view:cache
    ```
 
 5. **Setup SSL:**
@@ -643,8 +643,8 @@ Built with amazing open-source tools:
 git clone https://github.com/xquantoria/xquantoria.git
 cd xquantoria
 docker compose up -d
-docker exec cms-backend php artisan migrate --force
-docker exec cms-backend php artisan db:seed --force
+docker exec xquantoria-backend php artisan migrate --force
+docker exec xquantoria-backend php artisan db:seed --force
 ```
 
 ### Zugriff

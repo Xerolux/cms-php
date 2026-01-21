@@ -8,8 +8,8 @@ import { NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies';
 declare const self: ServiceWorkerGlobalScope;
 
 // Service Worker für Offline-Support und Caching
-const CACHE_NAME = 'cms-v1';
-const RUNTIME_CACHE = 'cms-runtime-v1';
+const CACHE_NAME = 'xquantoria-v1';
+const RUNTIME_CACHE = 'xquantoria-runtime-v1';
 
 // Install event - precache static assets
 self.addEventListener('install', (event: ExtendableEvent) => {
@@ -114,7 +114,7 @@ async function syncPosts() {
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('cms-offline', 1);
+    const request = indexedDB.open('xquantoria-offline', 1);
 
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);

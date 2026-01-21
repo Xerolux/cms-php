@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: cms-backend
+    container_name: xquantoria-backend
     ports:
       - "9000:9000"
     environment:
@@ -16,8 +16,8 @@ services:
       - DB_CONNECTION=pgsql
       - DB_HOST=database
       - DB_PORT=5432
-      - DB_DATABASE=cms_db
-      - DB_USERNAME=cms_user
+      - DB_DATABASE=xquantoria_db
+      - DB_USERNAME=xquantoria_user
       - DB_PASSWORD=secret
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -43,7 +43,7 @@ services:
       mailhog:
         condition: service_started
     networks:
-      - cms-network
+      - xquantoria-network
     restart: unless-stopped
 
   # Frontend (React/Vite)
@@ -51,19 +51,19 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: cms-frontend
+    container_name: xquantoria-frontend
     ports:
       - "3000:80"
     environment:
       - VITE_API_URL=/api/v1
     networks:
-      - cms-network
+      - xquantoria-network
     restart: unless-stopped
 
   # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
-    container_name: cms-nginx
+    container_name: xquantoria-nginx
     ports:
       - "80:80"
       - "443:443"
@@ -74,7 +74,7 @@ services:
       - backend
       - frontend
     networks:
-      - cms-network
+      - xquantoria-network
     restart: unless-stopped
 
   # PHP Artisan Queue Worker
@@ -82,15 +82,15 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: cms-queue-worker
+    container_name: xquantoria-queue-worker
     entrypoint: ["php", "artisan"]
     command: queue:work --sleep=3 --tries=3 --max-time=3600
     environment:
       - DB_CONNECTION=pgsql
       - DB_HOST=database
       - DB_PORT=5432
-      - DB_DATABASE=cms_db
-      - DB_USERNAME=cms_user
+      - DB_DATABASE=xquantoria_db
+      - DB_USERNAME=xquantoria_user
       - DB_PASSWORD=secret
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -105,7 +105,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - cms-network
+      - xquantoria-network
     restart: unless-stopped
 
   # Scheduler (for cron jobs)
@@ -113,14 +113,14 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: cms-scheduler
+    container_name: xquantoria-scheduler
     entrypoint: ["sh", "/var/www/html/scheduler.sh"]
     environment:
       - DB_CONNECTION=pgsql
       - DB_HOST=database
       - DB_PORT=5432
-      - DB_DATABASE=cms_db
-      - DB_USERNAME=cms_user
+      - DB_DATABASE=xquantoria_db
+      - DB_USERNAME=xquantoria_user
       - DB_PASSWORD=secret
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -135,16 +135,16 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - cms-network
+      - xquantoria-network
     restart: unless-stopped
 
   # PostgreSQL Database (Default)
   database:
     image: postgres:15-alpine
-    container_name: cms-postgres
+    container_name: xquantoria-postgres
     environment:
-      POSTGRES_DB: cms_db
-      POSTGRES_USER: cms_user
+      POSTGRES_DB: xquantoria_db
+      POSTGRES_USER: xquantoria_user
       POSTGRES_PASSWORD: secret
       POSTGRES_INITDB_ARGS: "-E UTF8"
     volumes:
@@ -153,10 +153,10 @@ services:
     ports:
       - "5432:5432"
     networks:
-      - cms-network
+      - xquantoria-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cms_user -d cms_db"]
+      test: ["CMD-SHELL", "pg_isready -U xquantoria_user -d xquantoria_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -164,10 +164,10 @@ services:
   # MySQL (Alternative)
   mysql:
     image: mysql:8.0
-    container_name: cms-mysql
+    container_name: xquantoria-mysql
     environment:
-      MYSQL_DATABASE: cms_db
-      MYSQL_USER: cms_user
+      MYSQL_DATABASE: xquantoria_db
+      MYSQL_USER: xquantoria_user
       MYSQL_PASSWORD: secret
       MYSQL_ROOT_PASSWORD: root_secret
       MYSQL_CHARSET: utf8mb4
@@ -178,7 +178,7 @@ services:
     ports:
       - "3306:3306"
     networks:
-      - cms-network
+      - xquantoria-network
     restart: unless-stopped
     profiles:
       - mysql
@@ -191,10 +191,10 @@ services:
   # MariaDB (Alternative)
   mariadb:
     image: mariadb:10.11
-    container_name: cms-mariadb
+    container_name: xquantoria-mariadb
     environment:
-      MYSQL_DATABASE: cms_db
-      MYSQL_USER: cms_user
+      MYSQL_DATABASE: xquantoria_db
+      MYSQL_USER: xquantoria_user
       MYSQL_PASSWORD: secret
       MYSQL_ROOT_PASSWORD: root_secret
       MYSQL_CHARSET: utf8mb4
@@ -205,7 +205,7 @@ services:
     ports:
       - "3307:3306"
     networks:
-      - cms-network
+      - xquantoria-network
     restart: unless-stopped
     profiles:
       - mariadb
@@ -218,14 +218,14 @@ services:
   # Redis Cache/Queue
   redis:
     image: redis:7-alpine
-    container_name: cms-redis
+    container_name: xquantoria-redis
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
     ports:
       - "6379:6379"
     networks:
-      - cms-network
+      - xquantoria-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -236,7 +236,7 @@ services:
   # Mailhog (Email Testing)
   mailhog:
     image: mailhog/mailhog:latest
-    container_name: cms-mailhog
+    container_name: xquantoria-mailhog
     ports:
       - "1025:1025"  # SMTP
       - "8025:8025"  # Web UI
@@ -246,11 +246,11 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - cms-network
+      - xquantoria-network
     restart: unless-stopped
 
 networks:
-  cms-network:
+  xquantoria-network:
     driver: bridge
 
 volumes:

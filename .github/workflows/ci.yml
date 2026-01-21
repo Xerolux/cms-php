@@ -14,8 +14,8 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: cms_test
-          POSTGRES_USER: cms_test
+          POSTGRES_DB: xquantoria_test
+          POSTGRES_USER: xquantoria_test
           POSTGRES_PASSWORD: test
         ports:
           - 5432:5432
@@ -82,8 +82,8 @@ jobs:
           DB_CONNECTION: pgsql
           DB_HOST: localhost
           DB_PORT: 5432
-          DB_DATABASE: cms_test
-          DB_USERNAME: cms_test
+          DB_DATABASE: xquantoria_test
+          DB_USERNAME: xquantoria_test
           DB_PASSWORD: test
         run: php artisan migrate --force --seed
 
@@ -93,8 +93,8 @@ jobs:
           DB_CONNECTION: pgsql
           DB_HOST: localhost
           DB_PORT: 5432
-          DB_DATABASE: cms_test
-          DB_USERNAME: cms_test
+          DB_DATABASE: xquantoria_test
+          DB_USERNAME: xquantoria_test
           DB_PASSWORD: test
         run: php artisan test
 
@@ -209,7 +209,7 @@ jobs:
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
-            cd /var/www/cms-staging
+            cd /var/www/xquantoria-staging
             git pull origin develop
             cd backend
             composer install --no-dev --optimize-autoloader --no-interaction
@@ -256,7 +256,7 @@ jobs:
           username: ${{ secrets.PRODUCTION_USER }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
-            cd /var/www/cms-production
+            cd /var/www/xquantoria-production
             ./scripts/backup.sh
 
       - name: Deploy to production server
@@ -266,7 +266,7 @@ jobs:
           username: ${{ secrets.PRODUCTION_USER }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
-            cd /var/www/cms-production
+            cd /var/www/xquantoria-production
             git pull origin main
             cd backend
             composer install --no-dev --optimize-autoloader --no-interaction

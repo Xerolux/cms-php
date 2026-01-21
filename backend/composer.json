@@ -1,6 +1,6 @@
 {
-    "name": "laravel/legacy-fixture",
-    "description": "CMS Backend with Laravel 11",
+    "name": "xquantoria/backend",
+    "description": "XQUANTORIA CMS Backend with Laravel 11",
     "type": "project",
     "require": {
         "php": "^8.2",

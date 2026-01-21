@@ -474,7 +474,9 @@ const ContentWorkflowPage: React.FC = () => {
                     <List
                       size="small"
                       dataSource={seoScore.issues}
-                      renderItem={(item) => <List.Item>{item}</List.Item>
+                      renderItem={(item) => (
+                        <List.Item>{item}</List.Item>
+                      )}
                     />
                   }
                   showIcon
@@ -491,7 +493,9 @@ const ContentWorkflowPage: React.FC = () => {
                     <List
                       size="small"
                       dataSource={seoScore.warnings}
-                      renderItem={(item) => <List.Item>{item}</List.Item>
+                      renderItem={(item) => (
+                        <List.Item>{item}</List.Item>
+                      )}
                     />
                   }
                   showIcon
@@ -508,7 +512,9 @@ const ContentWorkflowPage: React.FC = () => {
                     <List
                       size="small"
                       dataSource={seoScore.passes}
-                      renderItem={(item) => <List.Item>{item}</List.Item>
+                      renderItem={(item) => (
+                        <List.Item>{item}</List.Item>
+                      )}
                     />
                   }
                   showIcon

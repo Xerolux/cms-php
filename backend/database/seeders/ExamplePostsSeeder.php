@@ -31,7 +31,7 @@ class ExamplePostsSeeder extends Seeder
             ['name' => 'PostgreSQL', 'slug' => 'postgresql', 'color' => '#336791'],
             ['name' => 'JavaScript', 'slug' => 'javascript', 'color' => '#F7DF1E'],
             ['name' => 'TypeScript', 'slug' => 'typescript', 'color' => '#3178C6'],
-            ['name' => 'CMS', 'slug' => 'cms', 'color' => '#52c41a'],
+            ['name' => 'XQUANTORIA', 'slug' => 'xquantoria', 'color' => '#52c41a'],
         ];
 
         $tags = collect();
