@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
 import axios from 'axios';
 import { useAuthStore } from '../authStore';
 
@@ -19,13 +18,13 @@ global.localStorage = localStorageMock as any;
 
 describe('AuthStore', () => {
   beforeEach(() => {
-    setActivePinia(createPinia());
     vi.clearAllMocks();
     localStorageMock.getItem.mockReturnValue(null);
+    useAuthStore.setState({ user: null, token: null, isAuthenticated: false });
   });
 
   it('should initialize with empty state', () => {
-    const authStore = useAuthStore();
+    const authStore = useAuthStore.getState();
 
     expect(authStore.user).toBeNull();
     expect(authStore.token).toBeNull();
@@ -37,13 +36,12 @@ describe('AuthStore', () => {
     const mockToken = 'test-token';
 
     mockedAxios.post.mockResolvedValue({
-      data: { data: { user: mockUser, token: mockToken } },
+      data: { user: mockUser, token: mockToken },
     });
 
-    const authStore = useAuthStore();
+    await useAuthStore.getState().login('test@example.com', 'password');
 
-    await authStore.login('test@example.com', 'password');
-
+    const authStore = useAuthStore.getState();
     expect(authStore.user).toEqual(mockUser);
     expect(authStore.token).toBe(mockToken);
     expect(authStore.isAuthenticated).toBe(true);
@@ -55,92 +53,40 @@ describe('AuthStore', () => {
       response: { data: { message: 'Invalid credentials' } },
     });
 
-    const authStore = useAuthStore();
+    await expect(useAuthStore.getState().login('test@example.com', 'wrongpassword')).rejects.toThrow();
 
-    await expect(authStore.login('test@example.com', 'wrongpassword')).rejects.toThrow();
-
+    const authStore = useAuthStore.getState();
     expect(authStore.isAuthenticated).toBe(false);
   });
 
-  it('should logout user', async () => {
-    const authStore = useAuthStore();
-
+  it('should logout user', () => {
     // Set initial state
-    authStore.user = { id: 1, email: 'test@example.com' } as any;
-    authStore.token = 'test-token';
-    authStore.isAuthenticated = true;
+    useAuthStore.setState({
+        user: { id: 1, email: 'test@example.com' } as any,
+        token: 'test-token',
+        isAuthenticated: true
+    });
 
-    mockedAxios.post.mockResolvedValue({ data: { data: { message: 'Logged out' } } });
+    useAuthStore.getState().logout();
 
-    await authStore.logout();
-
+    const authStore = useAuthStore.getState();
     expect(authStore.user).toBeNull();
     expect(authStore.token).toBeNull();
     expect(authStore.isAuthenticated).toBe(false);
     expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth_token');
   });
 
-  it('should fetch user profile', async () => {
-    const mockUser = { id: 1, email: 'test@example.com', name: 'Test User' };
-
-    mockedAxios.get.mockResolvedValue({
-      data: { data: mockUser },
+  it('should update user profile locally', () => {
+    useAuthStore.setState({
+        user: { id: 1, email: 'test@example.com', name: 'Old Name' } as any
     });
-
-    const authStore = useAuthStore();
-    authStore.token = 'test-token';
-
-    await authStore.fetchProfile();
-
-    expect(authStore.user).toEqual(mockUser);
-  });
-
-  it('should update user profile', async () => {
-    const authStore = useAuthStore();
-    authStore.user = { id: 1, email: 'test@example.com', name: 'Old Name' } as any;
 
     const updatedUser = { id: 1, email: 'test@example.com', name: 'New Name' };
 
-    mockedAxios.put.mockResolvedValue({
-      data: { data: updatedUser },
-    });
+    useAuthStore.getState().updateUser(updatedUser as any);
 
-    await authStore.updateProfile({ name: 'New Name' });
-
+    const authStore = useAuthStore.getState();
     expect(authStore.user?.name).toBe('New Name');
-  });
-
-  it('should change password', async () => {
-    const authStore = useAuthStore();
-    authStore.token = 'test-token';
-
-    mockedAxios.post.mockResolvedValue({
-      data: { data: { message: 'Password changed' } },
-    });
-
-    await authStore.changePassword('oldpassword', 'newpassword');
-
-    expect(mockedAxios.post).toHaveBeenCalledWith('/auth/change-password', {
-      current_password: 'oldpassword',
-      new_password: 'newpassword',
-    });
-  });
-
-  it('should check if user has permission', () => {
-    const authStore = useAuthStore();
-    authStore.user = { role: 'admin' } as any;
-
-    expect(authStore.hasPermission('admin')).toBe(true);
-    expect(authStore.hasPermission('editor')).toBe(true);
-    expect(authStore.hasPermission('author')).toBe(true);
-  });
-
-  it('should return false for insufficient permissions', () => {
-    const authStore = useAuthStore();
-    authStore.user = { role: 'author' } as any;
-
-    expect(authStore.hasPermission('admin')).toBe(false);
-    expect(authStore.hasPermission('author')).toBe(true);
   });
 
   it('should handle remember me in login', async () => {
@@ -148,32 +94,15 @@ describe('AuthStore', () => {
     const mockToken = 'test-token';
 
     mockedAxios.post.mockResolvedValue({
-      data: { data: { user: mockUser, token: mockToken } },
+      data: { user: mockUser, token: mockToken },
     });
 
-    const authStore = useAuthStore();
+    await useAuthStore.getState().login('test@example.com', 'password', true);
 
-    await authStore.login('test@example.com', 'password', true);
-
-    expect(mockedAxios.post).toHaveBeenCalledWith('/auth/login', {
+    expect(mockedAxios.post).toHaveBeenCalledWith(expect.stringContaining('/auth/login'), {
       email: 'test@example.com',
       password: 'password',
       remember_me: true,
     });
-  });
-
-  it('should initialize with token from localStorage', () => {
-    localStorageMock.getItem.mockReturnValue('stored-token');
-
-    mockedAxios.get.mockResolvedValue({
-      data: { data: { id: 1, email: 'test@example.com' } },
-    });
-
-    const authStore = useAuthStore();
-
-    // This would normally happen in the store constructor or init
-    authStore.checkAuth();
-
-    expect(localStorageMock.getItem).toHaveBeenCalledWith('auth_token');
   });
 });

@@ -1,5 +1,25 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import axios from 'axios';
+
+// Use vi.hoisted to ensure mockApi is available for mock factory
+const mockApi = vi.hoisted(() => ({
+  get: vi.fn(),
+  post: vi.fn(),
+  put: vi.fn(),
+  delete: vi.fn(),
+  interceptors: {
+    request: { use: vi.fn() },
+    response: { use: vi.fn() },
+  },
+}));
+
+// Mock axios before importing api.ts
+vi.mock('axios', () => ({
+  default: {
+    create: () => mockApi,
+  },
+}));
+
+// Now import the services
 import {
   authService,
   postService,
@@ -12,10 +32,7 @@ import {
   sessionService,
 } from '../api';
 
-// Mock axios
-vi.mock('axios');
-
-const mockedAxios = axios as any;
+const mockedAxios = mockApi;
 
 describe('AuthService', () => {
   beforeEach(() => {
@@ -24,15 +41,21 @@ describe('AuthService', () => {
 
   it('should login user with valid credentials', async () => {
     const mockResponse = {
-      data: {
-        data: {
-          token: 'test-token',
-          user: { id: 1, email: 'test@example.com', name: 'Test User' },
-        },
-      },
+      token: 'test-token',
+      user: { id: 1, email: 'test@example.com', name: 'Test User' },
     };
 
-    mockedAxios.post.mockResolvedValue(mockResponse);
+    // The login method implementation:
+    // async login(email: string, password: string) {
+    //   const { data } = await api.post('/auth/login', { email, password });
+    //   localStorage.setItem('auth_token', data.token);
+    //   return data;
+    // }
+    //
+    // So axios needs to resolve with { data: mockResponse }
+    // And result will be mockResponse
+
+    mockedAxios.post.mockResolvedValue({ data: mockResponse });
 
     const result = await authService.login('test@example.com', 'password');
 
@@ -44,7 +67,7 @@ describe('AuthService', () => {
   });
 
   it('should logout user', async () => {
-    mockedAxios.post.mockResolvedValue({ data: { data: { message: 'Logged out' } } });
+    mockedAxios.post.mockResolvedValue({ data: { message: 'Logged out' } });
 
     await authService.logout();
 
@@ -53,9 +76,9 @@ describe('AuthService', () => {
 
   it('should get current user profile', async () => {
     const mockUser = { id: 1, email: 'test@example.com', name: 'Test User' };
-    mockedAxios.get.mockResolvedValue({ data: { data: mockUser } });
+    mockedAxios.get.mockResolvedValue({ data: mockUser });
 
-    const result = await authService.getProfile();
+    const result = await authService.me(); // Updated from getProfile to me
 
     expect(result.email).toBe('test@example.com');
   });
@@ -74,7 +97,7 @@ describe('PostService', () => {
       ],
     };
 
-    mockedAxios.get.mockResolvedValue({ data: { data: mockPosts } });
+    mockedAxios.get.mockResolvedValue({ data: mockPosts });
 
     const result = await postService.getAll({ page: 1, per_page: 10 });
 
@@ -86,9 +109,9 @@ describe('PostService', () => {
 
   it('should create a new post', async () => {
     const newPost = { title: 'New Post', content: 'Content' };
-    const mockResponse = { data: { data: { id: 1, ...newPost } } };
+    const mockResponse = { id: 1, ...newPost };
 
-    mockedAxios.post.mockResolvedValue(mockResponse);
+    mockedAxios.post.mockResolvedValue({ data: mockResponse });
 
     const result = await postService.create(newPost);
 
@@ -98,9 +121,9 @@ describe('PostService', () => {
 
   it('should update a post', async () => {
     const updatedPost = { title: 'Updated Post' };
-    const mockResponse = { data: { data: { id: 1, ...updatedPost } } };
+    const mockResponse = { id: 1, ...updatedPost };
 
-    mockedAxios.put.mockResolvedValue(mockResponse);
+    mockedAxios.put.mockResolvedValue({ data: mockResponse });
 
     const result = await postService.update(1, updatedPost);
 
@@ -108,7 +131,7 @@ describe('PostService', () => {
   });
 
   it('should delete a post', async () => {
-    mockedAxios.delete.mockResolvedValue({ data: { data: { message: 'Deleted' } } });
+    mockedAxios.delete.mockResolvedValue({ data: { message: 'Deleted' } });
 
     await postService.delete(1);
 
@@ -129,7 +152,7 @@ describe('UserService', () => {
       ],
     };
 
-    mockedAxios.get.mockResolvedValue({ data: { data: mockUsers } });
+    mockedAxios.get.mockResolvedValue({ data: mockUsers });
 
     const result = await userService.getAll();
 
@@ -138,9 +161,9 @@ describe('UserService', () => {
 
   it('should create a new user', async () => {
     const newUser = { name: 'New User', email: 'new@example.com', password: 'password' };
-    const mockResponse = { data: { data: { id: 1, ...newUser } } };
+    const mockResponse = { id: 1, ...newUser };
 
-    mockedAxios.post.mockResolvedValue(mockResponse);
+    mockedAxios.post.mockResolvedValue({ data: mockResponse });
 
     const result = await userService.create(newUser);
 
@@ -159,7 +182,7 @@ describe('CategoryService', () => {
       { id: 2, name: 'News' },
     ];
 
-    mockedAxios.get.mockResolvedValue({ data: { data: mockCategories } });
+    mockedAxios.get.mockResolvedValue({ data: mockCategories });
 
     const result = await categoryService.getAll();
 
@@ -168,9 +191,9 @@ describe('CategoryService', () => {
 
   it('should create a category', async () => {
     const newCategory = { name: 'Tech', slug: 'tech' };
-    const mockResponse = { data: { data: { id: 1, ...newCategory } } };
+    const mockResponse = { id: 1, ...newCategory };
 
-    mockedAxios.post.mockResolvedValue(mockResponse);
+    mockedAxios.post.mockResolvedValue({ data: mockResponse });
 
     const result = await categoryService.create(newCategory);
 
@@ -189,7 +212,7 @@ describe('TagService', () => {
       { id: 2, name: 'React' },
     ];
 
-    mockedAxios.get.mockResolvedValue({ data: { data: mockTags } });
+    mockedAxios.get.mockResolvedValue({ data: mockTags });
 
     const result = await tagService.getAll();
 
@@ -210,21 +233,21 @@ describe('CommentService', () => {
       ],
     };
 
-    mockedAxios.get.mockResolvedValue({ data: { data: mockComments } });
+    mockedAxios.get.mockResolvedValue({ data: mockComments });
 
-    const result = await commentService.getAll(1);
+    const result = await commentService.getAll({ post_id: 1 });
 
-    expect(mockedAxios.get).toHaveBeenCalledWith('/posts/1/comments');
+    expect(mockedAxios.get).toHaveBeenCalledWith('/comments', { params: { post_id: 1 } });
     expect(result.data).toHaveLength(2);
   });
 
   it('should create a comment', async () => {
-    const newComment = { content: 'Great post!' };
-    const mockResponse = { data: { data: { id: 1, ...newComment } } };
+    const newComment = { content: 'Great post!', post_id: 1 };
+    const mockResponse = { id: 1, ...newComment };
 
-    mockedAxios.post.mockResolvedValue(mockResponse);
+    mockedAxios.post.mockResolvedValue({ data: mockResponse });
 
-    const result = await commentService.create(1, newComment);
+    const result = await commentService.create(newComment);
 
     expect(result.content).toBe('Great post!');
   });
@@ -243,7 +266,7 @@ describe('WorkflowService', () => {
       draft: 8,
     };
 
-    mockedAxios.get.mockResolvedValue({ data: { data: mockStats } });
+    mockedAxios.get.mockResolvedValue({ data: mockStats });
 
     const result = await workflowService.getStats();
 
@@ -252,7 +275,7 @@ describe('WorkflowService', () => {
   });
 
   it('should assign user to post', async () => {
-    mockedAxios.post.mockResolvedValue({ data: { data: { message: 'Assigned' } } });
+    mockedAxios.post.mockResolvedValue({ data: { message: 'Assigned' } });
 
     await workflowService.assignUser(1, 2, 'author');
 
@@ -263,7 +286,7 @@ describe('WorkflowService', () => {
   });
 
   it('should approve post', async () => {
-    mockedAxios.post.mockResolvedValue({ data: { data: { message: 'Approved' } } });
+    mockedAxios.post.mockResolvedValue({ data: { message: 'Approved' } });
 
     await workflowService.approvePost(1, 'Looks good!');
 
@@ -281,7 +304,7 @@ describe('WorkflowService', () => {
       passes: ['Title length is good', 'Meta description is good'],
     };
 
-    mockedAxios.get.mockResolvedValue({ data: { data: mockScore } });
+    mockedAxios.get.mockResolvedValue({ data: mockScore });
 
     const result = await workflowService.getSEOScore(1);
 
@@ -305,7 +328,7 @@ describe('SocialMediaService', () => {
       },
     };
 
-    mockedAxios.get.mockResolvedValue({ data: { data: mockStats } });
+    mockedAxios.get.mockResolvedValue({ data: mockStats });
 
     const result = await socialMediaService.getStats();
 
@@ -313,13 +336,14 @@ describe('SocialMediaService', () => {
   });
 
   it('should share post', async () => {
-    mockedAxios.post.mockResolvedValue({ data: { data: { message: 'Shared' } } });
+    mockedAxios.post.mockResolvedValue({ data: { message: 'Shared' } });
 
     await socialMediaService.sharePost(1, ['twitter', 'facebook'], 'Check this out!');
 
     expect(mockedAxios.post).toHaveBeenCalledWith('/social-media/posts/1/share', {
       platforms: ['twitter', 'facebook'],
       custom_message: 'Check this out!',
+      scheduled_at: undefined,
     });
   });
 
@@ -329,7 +353,7 @@ describe('SocialMediaService', () => {
       { id: 2, platform: 'facebook', shared_at: '2024-01-02' },
     ];
 
-    mockedAxios.get.mockResolvedValue({ data: { data: mockShares } });
+    mockedAxios.get.mockResolvedValue({ data: mockShares });
 
     const result = await socialMediaService.getPostShares(1);
 
@@ -348,7 +372,7 @@ describe('SessionService', () => {
       { id: 2, ip_address: '192.168.1.1', device_type: 'mobile' },
     ];
 
-    mockedAxios.get.mockResolvedValue({ data: { data: mockSessions } });
+    mockedAxios.get.mockResolvedValue({ data: mockSessions });
 
     const result = await sessionService.getAll();
 
@@ -356,18 +380,18 @@ describe('SessionService', () => {
   });
 
   it('should revoke session', async () => {
-    mockedAxios.delete.mockResolvedValue({ data: { data: { message: 'Revoked' } } });
+    mockedAxios.delete.mockResolvedValue({ data: { message: 'Revoked' } });
 
     await sessionService.revoke(1);
 
-    expect(mockedAxios.delete).toHaveBeenCalledWith('/auth/sessions/1');
+    expect(mockedAxios.delete).toHaveBeenCalledWith('/sessions/1');
   });
 
   it('should revoke all other sessions', async () => {
-    mockedAxios.delete.mockResolvedValue({ data: { data: { message: 'All revoked' } } });
+    mockedAxios.delete.mockResolvedValue({ data: { message: 'All revoked' } });
 
     await sessionService.revokeAll();
 
-    expect(mockedAxios.delete).toHaveBeenCalledWith('/auth/sessions');
+    expect(mockedAxios.delete).toHaveBeenCalledWith('/sessions');
   });
 });

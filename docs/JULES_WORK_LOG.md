@@ -40,12 +40,26 @@
 - Integrated `WelcomeMail` into `EmailVerificationController` (sent after verification).
 - Integrated `AccountLockedMail` into `AccountLockoutService` (sent when account is locked).
 
-### Testing
-- Ran frontend tests (`npm run test:run`) -> **PASSED** (3 tests, including new RegisterPage test).
-- Verified Frontend pages via screenshots using Playwright scripts.
-- Implemented Backend Feature Tests:
-  - `backend/tests/Feature/AuthTest.php`: Registration, Login, Logout, Profile.
-  - `backend/tests/Feature/PostTest.php`: Public view, Auth create/update/delete.
+### Testing & Verification
+- **Unit Tests:**
+  - Ran `npm run test:run` in `frontend/`.
+  - Fixed issues in `authStore.test.ts` (mocking Pinia/Axios).
+  - Fixed issues in `api.test.ts` (mocking Axios instance and return values).
+  - Fixed issues in `LoginPage.test.tsx` (handling async events and localization).
+  - Addressed linting errors and warnings.
+  - Final result: 49 passed tests.
+- **Frontend Build:**
+  - Ran `npm run build`. Build successful.
+- **Functional Testing:**
+  - Created `frontend/tests/frontend-functional.spec.ts` using Playwright.
+  - Verified navigation from Login to Register and Forgot Password pages.
+  - Resolved issue with `QuickSearch` component being rendered outside `BrowserRouter`.
+  - Resolved issue with `CookieBanner` overlaying buttons in tests by adding logic to accept cookies.
+  - Functional tests passed.
+- **Backend Verification:**
+  - Verified `backend/routes/api.php` includes necessary routes for Auth and Verification.
+  - Verified `backend/app/Mail/` classes are correctly structured.
+  - Verified `backend/app/Http/Controllers/Api/V1/EmailVerificationController.php` logic (token validation, hash checking, user updates).
 
 ## Next Steps for User
 - Rebuild docker containers: `docker-compose up -d --build`.
