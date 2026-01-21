@@ -77,7 +77,6 @@ const LoginPage: React.FC = () => {
           <Form.Item
             label="Email"
             name="email"
-            initialValue="admin@example.com"
             rules={[
               { required: true, message: 'Bitte Email eingeben' },
               { type: 'email', message: 'Ungültige Email' },
@@ -93,7 +92,6 @@ const LoginPage: React.FC = () => {
           <Form.Item
             label="Passwort"
             name="password"
-            initialValue="password"
             rules={[{ required: true, message: 'Bitte Passwort eingeben' }]}
           >
             <Input.Password

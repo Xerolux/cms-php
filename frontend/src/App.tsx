@@ -71,11 +71,11 @@ function App() {
         },
       }}
     >
-      <QuickSearch
-        visible={quickSearchVisible}
-        onClose={() => setQuickSearchVisible(false)}
-      />
       <BrowserRouter>
+        <QuickSearch
+          visible={quickSearchVisible}
+          onClose={() => setQuickSearchVisible(false)}
+        />
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public Home Page */}
