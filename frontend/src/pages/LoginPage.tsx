@@ -63,6 +63,8 @@ const LoginPage: React.FC = () => {
           <Text type="secondary" style={{ fontSize: '12px' }}>
             Test-Account: admin@example.com / password
           </Text>
+            <br />
+            <Text>Noch kein Konto? <Button type="link" onClick={() => navigate('/register')} style={{ padding: 0 }}>Registrieren</Button></Text>
         </div>
 
         <Form
@@ -112,13 +114,20 @@ const LoginPage: React.FC = () => {
             </Button>
           </Form.Item>
 
-          <div style={{ textAlign: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+             <Button
+              type="link"
+              onClick={() => navigate('/forgot-password')}
+              style={{ padding: 0 }}
+            >
+              Passwort vergessen?
+            </Button>
             <Button
               type="link"
               onClick={() => navigate('/')}
               style={{ padding: 0 }}
             >
-              Zurück zur Startseite
+              Startseite
             </Button>
           </div>
         </Form>

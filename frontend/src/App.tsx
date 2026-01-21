@@ -24,6 +24,10 @@ import PluginManagerPage from './pages/PluginManagerPage';
 import RoleHierarchyPage from './pages/RoleHierarchyPage';
 import MainLayout from './components/Layout/MainLayout';
 import HomePage from './pages/HomePage';
+import RegisterPage from './pages/RegisterPage';
+import EmailVerificationPage from './pages/EmailVerificationPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import CookieBanner from './components/CookieBanner';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -78,6 +82,10 @@ function App() {
 
           {/* Standalone Login Page */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<EmailVerificationPage />} />
 
           {/* Catch all - redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
