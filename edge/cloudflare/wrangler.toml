@@ -1,0 +1,61 @@
+name = "xquantoria-edge"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Environment variables
+[vars]
+BACKEND_URL = "https://api.xquantoria.com"
+CACHE_TTL = "3600"
+API_CACHE_TTL = "300"
+
+# KV Namespaces for caching
+[[kv_namespaces]]
+binding = "CACHE"
+id = "your_kv_namespace_id"
+preview_id = "your_preview_kv_namespace_id"
+
+# D1 Database for analytics (optional)
+[[d1_databases]]
+binding = "DB"
+database_name = "xquantoria_analytics"
+database_id = "your_d1_database_id"
+
+# R2 Bucket for storage (optional)
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "xquantoria-assets"
+
+# Environment-specific configurations
+[env.production]
+name = "xquantoria-edge-production"
+routes = [
+  { pattern = "https://xquantoria.com/*", zone_name = "xquantoria.com" }
+]
+
+[env.staging]
+name = "xquantoria-edge-staging"
+routes = [
+  { pattern = "https://staging.xquantoria.com/*", zone_name = "xquantoria.com" }
+]
+
+[env.development]
+name = "xquantoria-edge-development"
+
+# Build configuration
+[build]
+command = "npm install"
+
+# Service bindings for inter-worker communication
+# [[services]]
+# binding = "AUTH_SERVICE"
+# service = "auth-worker"
+
+# Queue consumer for async tasks
+# [[queues.producers]]
+# binding = "CACHE_QUEUE"
+# queue = "cache-invalidation-queue"
+
+# [[queues.consumers]]
+# queue = "cache-invalidation-queue"
+# max_batch_size = 10
+# max_wait_time = 5

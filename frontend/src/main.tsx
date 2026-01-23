@@ -1,6 +1,7 @@
 import ReactDOM from 'react-dom/client';
 import { StrictMode } from 'react';
 import App from './App';
+import { ApolloProvider } from './providers/ApolloProvider';
 import './index.css';
 
 // Service Worker Registration
@@ -18,6 +19,8 @@ if ('serviceWorker' in navigator) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ApolloProvider>
+      <App />
+    </ApolloProvider>
   </StrictMode>,
 );

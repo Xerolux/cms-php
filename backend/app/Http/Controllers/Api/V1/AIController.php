@@ -17,6 +17,52 @@ class AIController extends Controller
     }
 
     /**
+     * Generate full article content
+     */
+    public function generateFullArticle(Request $request): JsonResponse
+    {
+        $request->validate([
+            'title' => 'sometimes|string|max:200',
+            'topic' => 'required_without:title|string|max:500',
+            'tone' => 'in:professional,casual,friendly,formal,technical,conversational',
+            'target_audience' => 'sometimes|string|max:200',
+            'keywords' => 'array',
+            'keywords.*' => 'string|max:50',
+            'word_count' => 'integer|min:100|max:5000',
+            'outline' => 'sometimes|string',
+            'research_points' => 'array',
+            'research_points.*' => 'string',
+            'temperature' => 'numeric|min:0|max:2',
+        ]);
+
+        try {
+            $result = $this->aiService->generateFullArticle([
+                'title' => $request->title,
+                'topic' => $request->topic,
+                'tone' => $request->tone ?? 'professional',
+                'target_audience' => $request->target_audience,
+                'keywords' => $request->keywords ?? [],
+                'word_count' => $request->word_count ?? 1500,
+                'outline' => $request->outline,
+                'research_points' => $request->research_points ?? [],
+                'temperature' => $request->temperature ?? 0.7,
+            ]);
+
+            return response()->json([
+                'success' => $result['success'] ?? false,
+                'content' => $result['text'] ?? '',
+                'usage' => $result['usage'] ?? [],
+                'error' => $result['error'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Generate content based on topic and options
      */
     public function generateContent(Request $request): JsonResponse
@@ -31,10 +77,7 @@ class AIController extends Controller
 
         try {
             $result = $this->aiService->generateContent(
-                $request->topic,
-                $request->tone ?? 'professional',
-                $request->length ?? 'medium',
-                $request->keywords ?? []
+                $request->all()
             );
 
             return response()->json([
@@ -50,24 +93,233 @@ class AIController extends Controller
     }
 
     /**
+     * Optimize content for SEO
+     */
+    public function optimizeSEO(Request $request): JsonResponse
+    {
+        $request->validate([
+            'title' => 'required|string|max:200',
+            'content' => 'required|string|min:100',
+        ]);
+
+        try {
+            $result = $this->aiService->optimizeSEO(
+                $request->title,
+                $request->content
+            );
+
+            return response()->json([
+                'success' => $result['success'] ?? false,
+                'analysis' => $result['text'] ?? '',
+                'usage' => $result['usage'] ?? [],
+                'error' => $result['error'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Generate summary for content
      */
     public function generateSummary(Request $request): JsonResponse
     {
         $request->validate([
-            'content' => 'required|string',
-            'max_sentences' => 'integer|min:1|max:10',
+            'content' => 'required|string|min:50',
+            'max_length' => 'integer|min:50|max:500',
         ]);
 
         try {
             $summary = $this->aiService->generateSummary(
                 $request->content,
-                $request->max_sentences ?? 3
+                $request->max_length ?? 150
             );
 
             return response()->json([
                 'success' => true,
                 'summary' => $summary,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate tags based on content
+     */
+    public function generateTags(Request $request): JsonResponse
+    {
+        $request->validate([
+            'title' => 'required|string|max:200',
+            'content' => 'required|string|min:100',
+            'count' => 'integer|min:3|max:30',
+        ]);
+
+        try {
+            $tags = $this->aiService->generateTags(
+                $request->title,
+                $request->content,
+                $request->count ?? 10
+            );
+
+            return response()->json([
+                'success' => true,
+                'tags' => $tags,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Check for plagiarism
+     */
+    public function checkPlagiarism(Request $request): JsonResponse
+    {
+        $request->validate([
+            'content' => 'required|string|min:100',
+            'existing_content' => 'array',
+            'existing_content.*.title' => 'string',
+            'existing_content.*.content' => 'string',
+        ]);
+
+        try {
+            $result = $this->aiService->checkPlagiarism(
+                $request->content,
+                $request->existing_content ?? []
+            );
+
+            return response()->json([
+                'success' => $result['success'] ?? false,
+                'analysis' => $result['text'] ?? '',
+                'error' => $result['error'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Analyze sentiment of content
+     */
+    public function analyzeSentiment(Request $request): JsonResponse
+    {
+        $request->validate([
+            'content' => 'required|string|min:50',
+        ]);
+
+        try {
+            $sentiment = $this->aiService->analyzeSentiment($request->content);
+
+            return response()->json([
+                'success' => true,
+                'sentiment' => $sentiment,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Suggest headlines for content
+     */
+    public function suggestHeadlines(Request $request): JsonResponse
+    {
+        $request->validate([
+            'topic' => 'required|string|max:200',
+            'content' => 'sometimes|string',
+            'count' => 'integer|min:5|max:20',
+        ]);
+
+        try {
+            $headlines = $this->aiService->suggestHeadlines(
+                $request->topic,
+                $request->content ?? '',
+                $request->count ?? 10
+            );
+
+            return response()->json([
+                'success' => true,
+                'headlines' => $headlines,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Translate content using DeepL
+     */
+    public function translateContent(Request $request): JsonResponse
+    {
+        $request->validate([
+            'content' => 'required|string|min:10',
+            'target_language' => 'required|string|size:2',
+            'source_language' => 'sometimes|string|size:2',
+        ]);
+
+        try {
+            $result = $this->aiService->translateContent(
+                $request->content,
+                $request->target_language,
+                $request->source_language ?? 'auto'
+            );
+
+            return response()->json([
+                'success' => $result['success'] ?? false,
+                'translated_text' => $result['translated_text'] ?? '',
+                'detected_language' => $result['detected_language'] ?? null,
+                'error' => $result['error'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate image using DALL-E
+     */
+    public function generateImage(Request $request): JsonResponse
+    {
+        $request->validate([
+            'prompt' => 'required|string|min:10|max:4000',
+            'size' => 'in:1024x1024,1792x1024,1024x1792',
+            'style' => 'in:vivid,natural',
+        ]);
+
+        try {
+            $result = $this->aiService->generateImage(
+                $request->prompt,
+                $request->size ?? '1024x1024',
+                $request->style ?? 'vivid'
+            );
+
+            return response()->json([
+                'success' => $result['success'] ?? false,
+                'image_url' => $result['image_url'] ?? '',
+                'revised_prompt' => $result['revised_prompt'] ?? '',
+                'error' => $result['error'] ?? null,
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -89,7 +341,7 @@ class AIController extends Controller
         ]);
 
         try {
-            $keywords = $this->aiService->generateKeywords(
+            $keywords = $this->aiService->generateTags(
                 $request->title,
                 $request->content,
                 $request->count ?? 10
@@ -118,7 +370,7 @@ class AIController extends Controller
         ]);
 
         try {
-            $description = $this->aiService->generateMetaDescription(
+            $description = $this->aiService->generateSummary(
                 $request->content,
                 $request->max_length ?? 160
             );
@@ -171,15 +423,17 @@ class AIController extends Controller
     public function proofread(Request $request): JsonResponse
     {
         $request->validate([
-            'content' => 'required|string',
+            'content' => 'required|string|min:50',
         ]);
 
         try {
             $improved = $this->aiService->proofreadContent($request->content);
 
             return response()->json([
-                'success' => true,
-                'improved_content' => $improved,
+                'success' => $improved['success'] ?? false,
+                'improved_content' => $improved['text'] ?? '',
+                'usage' => $improved['usage'] ?? [],
+                'error' => $improved['error'] ?? null,
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -215,5 +469,86 @@ class AIController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Chat with AI assistant
+     */
+    public function chat(Request $request): JsonResponse
+    {
+        $request->validate([
+            'messages' => 'required|array|min:1',
+            'messages.*.role' => 'required|in:system,user,assistant',
+            'messages.*.content' => 'required|string',
+            'model' => 'sometimes|string',
+            'temperature' => 'sometimes|numeric|min:0|max:2',
+            'max_tokens' => 'sometimes|integer|min:1|max:4000',
+        ]);
+
+        try {
+            $result = $this->aiService->chat(
+                $request->messages,
+                [
+                    'model' => $request->model,
+                    'temperature' => $request->temperature ?? 0.7,
+                    'max_tokens' => $request->max_tokens ?? 1000,
+                ]
+            );
+
+            return response()->json([
+                'success' => $result['success'] ?? false,
+                'message' => $result['message'] ?? '',
+                'usage' => $result['usage'] ?? [],
+                'error' => $result['error'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * RAG-based chat with knowledge base
+     */
+    public function ragChat(Request $request): JsonResponse
+    {
+        $request->validate([
+            'query' => 'required|string|min:10|max:2000',
+            'context_documents' => 'array',
+            'context_documents.*.title' => 'required|string',
+            'context_documents.*.content' => 'required|string',
+        ]);
+
+        try {
+            $result = $this->aiService->ragChat(
+                $request->query,
+                $request->context_documents ?? []
+            );
+
+            return response()->json([
+                'success' => $result['success'] ?? false,
+                'response' => $result['message'] ?? '',
+                'usage' => $result['usage'] ?? [],
+                'error' => $result['error'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Check AI service availability
+     */
+    public function checkAvailability(): JsonResponse
+    {
+        return response()->json([
+            'available' => $this->aiService->isAvailable(),
+            'deepl_available' => $this->aiService->isDeepLAvailable(),
+        ]);
     }
 }

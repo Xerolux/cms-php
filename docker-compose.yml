@@ -70,12 +70,40 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/http2:/etc/nginx/http2:ro
     depends_on:
       - backend
       - frontend
     networks:
       - xquantoria-network
     restart: unless-stopped
+
+  # Varnish Cache Server
+  varnish:
+    image: varnish:7-alpine
+    container_name: xquantoria-varnish
+    ports:
+      - "6081:80"
+      - "6082:6082"  # Admin port
+    volumes:
+      - ./docker/varnish/default.vcl:/etc/varnish/default.vcl:ro
+    environment:
+      - VARNISH_SIZE=2G
+      - CACHE_SIZE=256M
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - xquantoria-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "varnishadm", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - full
+      - production
 
   # PHP Artisan Queue Worker
   queue-worker:
@@ -215,7 +243,54 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis Cache/Queue
+  # Redis Master
+  redis-master:
+    image: redis:7-alpine
+    container_name: xquantoria-redis-master
+    command: redis-server /usr/local/etc/redis/redis-master.conf
+    volumes:
+      - ./docker/redis/redis-master.conf:/usr/local/etc/redis/redis-master.conf:ro
+      - redis_master_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - xquantoria-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - cluster
+      - full
+
+  # Redis Slave
+  redis-slave:
+    image: redis:7-alpine
+    container_name: xquantoria-redis-slave
+    command: redis-server /usr/local/etc/redis/redis-slave.conf
+    volumes:
+      - ./docker/redis/redis-slave.conf:/usr/local/etc/redis/redis-slave.conf:ro
+      - redis_slave_data:/data
+    ports:
+      - "6380:6380"
+    networks:
+      - xquantoria-network
+    restart: unless-stopped
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - cluster
+      - full
+
+  # Redis (Single instance for development)
   redis:
     image: redis:7-alpine
     container_name: xquantoria-redis
@@ -232,6 +307,27 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    profiles:
+      - default
+
+  # Redis Sentinel (for automatic failover)
+  redis-sentinel:
+    image: redis:7-alpine
+    container_name: xquantoria-redis-sentinel
+    command: redis-sentinel /usr/local/etc/redis/sentinel.conf
+    volumes:
+      - ./docker/redis/sentinel.conf:/usr/local/etc/redis/sentinel.conf:ro
+    ports:
+      - "26379:26379"
+    networks:
+      - xquantoria-network
+    depends_on:
+      - redis-master
+      - redis-slave
+    restart: unless-stopped
+    profiles:
+      - cluster
+      - full
 
   # Mailhog (Email Testing)
   mailhog:
@@ -261,4 +357,10 @@ volumes:
   mariadb_data:
     driver: local
   redis_data:
+    driver: local
+  redis_master_data:
+    driver: local
+  redis_slave_data:
+    driver: local
+  varnish_data:
     driver: local

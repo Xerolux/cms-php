@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\V1\ImageProcessingController;
 use App\Http\Controllers\Api\V1\SocialMediaController;
 use App\Http\Controllers\Api\V1\SeoController;
 use App\Http\Controllers\Api\V1\TranslationController;
+use App\Http\Controllers\Api\V1\WebhookController;
 use App\Http\Controllers\NewsletterSubscriptionController;
 use App\Http\Controllers\SitemapController;
 
@@ -302,13 +303,39 @@ Route::prefix('v1')->group(function () {
 
         // AI Assistant Features - Author and above
         Route::prefix('ai')->middleware('role:author,editor,admin,super_admin')->group(function () {
+            // Content Generation
+            Route::post('/generate-full-article', [AIController::class, 'generateFullArticle']);
             Route::post('/generate-content', [AIController::class, 'generateContent']);
+            Route::post('/generate-ideas', [AIController::class, 'generateIdeas']);
+            Route::post('/suggest-headlines', [AIController::class, 'suggestHeadlines']);
+
+            // Content Analysis & Optimization
+            Route::post('/optimize-seo', [AIController::class, 'optimizeSEO']);
+            Route::post('/proofread', [AIController::class, 'proofread']);
+            Route::post('/check-plagiarism', [AIController::class, 'checkPlagiarism']);
+            Route::post('/analyze-sentiment', [AIController::class, 'analyzeSentiment']);
+
+            // SEO & Metadata
             Route::post('/generate-summary', [AIController::class, 'generateSummary']);
             Route::post('/generate-keywords', [AIController::class, 'generateKeywords']);
+            Route::post('/generate-tags', [AIController::class, 'generateTags']);
             Route::post('/generate-meta-description', [AIController::class, 'generateMetaDescription']);
+
+            // Content Recommendations
             Route::post('/suggest-related', [AIController::class, 'suggestRelated']);
-            Route::post('/proofread', [AIController::class, 'proofread']);
-            Route::post('/generate-ideas', [AIController::class, 'generateIdeas']);
+
+            // Translation
+            Route::post('/translate-content', [AIController::class, 'translateContent']);
+
+            // Image Generation
+            Route::post('/generate-image', [AIController::class, 'generateImage']);
+
+            // Chatbot & RAG
+            Route::post('/chat', [AIController::class, 'chat']);
+            Route::post('/rag-chat', [AIController::class, 'ragChat']);
+
+            // Service Status
+            Route::get('/check-availability', [AIController::class, 'checkAvailability']);
         });
 
         // Post Sharing
@@ -359,6 +386,23 @@ Route::prefix('v1')->group(function () {
             Route::post('/posts/{postId}/approve', [\App\Http\Controllers\Api\V1\WorkflowController::class, 'approvePost']);
             Route::post('/posts/{postId}/request-changes', [\App\Http\Controllers\Api\V1\WorkflowController::class, 'requestChanges']);
             Route::get('/posts/{postId}/seo-score', [\App\Http\Controllers\Api\V1\WorkflowController::class, 'getSEOScore']);
+        });
+
+        // Webhook Management - Admin and above
+        Route::prefix('webhooks')->middleware('role:admin,super_admin')->group(function () {
+            Route::get('/', [WebhookController::class, 'index']);
+            Route::get('/events', [WebhookController::class, 'events']);
+            Route::post('/', [WebhookController::class, 'store']);
+            Route::get('/{webhook}', [WebhookController::class, 'show']);
+            Route::put('/{webhook}', [WebhookController::class, 'update']);
+            Route::delete('/{webhook}', [WebhookController::class, 'destroy']);
+            Route::post('/{webhook}/test', [WebhookController::class, 'test']);
+            Route::post('/{webhook}/retry', [WebhookController::class, 'retry']);
+            Route::post('/{webhook}/toggle', [WebhookController::class, 'toggle']);
+            Route::post('/{webhook}/regenerate-secret', [WebhookController::class, 'regenerateSecret']);
+            Route::get('/{webhook}/stats', [WebhookController::class, 'stats']);
+            Route::get('/{webhook}/logs', [WebhookController::class, 'logs']);
+            Route::get('/{webhook}/logs/{log}', [WebhookController::class, 'log']);
         });
     });
 

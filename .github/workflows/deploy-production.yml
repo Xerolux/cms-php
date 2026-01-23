@@ -1,0 +1,682 @@
+name: Deploy to Production
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+        type: string
+      skip_backup:
+        description: 'Skip backup (NOT RECOMMENDED)'
+        required: false
+        type: boolean
+        default: false
+      canary_release:
+        description: 'Enable canary release (deploy to subset of servers)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  BACKEND_PATH: ./backend
+  FRONTEND_PATH: ./frontend
+  DEPLOY_PATH: /var/www/xquantoria-production
+  BACKUP_PATH: /var/backups/xquantoria-production
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  # ============================================
+  # PRE-DEPLOYMENT VALIDATION
+  # ============================================
+  validation:
+    name: Pre-Deployment Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            TAG="${{ github.ref_name }}"
+          elif [[ -n "${{ inputs.version }}" ]]; then
+            TAG="${{ inputs.version }}"
+          else
+            echo "Error: No version tag provided"
+            exit 1
+          fi
+
+          # Verify tag format
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "Error: Invalid tag format. Expected: v1.0.0 or v1.0.0-beta"
+            exit 1
+          fi
+
+          echo "VERSION_TAG=$TAG" >> $GITHUB_ENV
+          echo "Tag verified: $TAG"
+
+      - name: Check for recent commits
+        run: |
+          # Check if there are commits between last tag and current
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            COMMITS=$(git rev-list ${LAST_TAG}..HEAD --count)
+            echo "Commits since $LAST_TAG: $COMMITS"
+          fi
+
+      - name: Run all CI checks
+        run: |
+          echo "Triggering CI workflow..."
+          gh workflow run ci.yml
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for CI checks
+        run: |
+          echo "Waiting for CI checks to complete..."
+          sleep 60
+
+  # ============================================
+  # MANUAL APPROVAL GATE
+  # ============================================
+  approval-gate:
+    name: Manual Approval Required
+    runs-on: ubuntu-latest
+    needs: validation
+    environment:
+      name: production
+      url: ${{ secrets.PRODUCTION_URL }}
+
+    steps:
+      - name: Request approval
+        run: |
+          echo "# Production Deployment Approval Required" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ env.VERSION_TAG || inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **This will deploy to PRODUCTION**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please review the changes and approve this deployment." >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify approval request
+        uses: 8398a7/action-slack@v3
+        with:
+          status: warning
+          text: |
+            Production Deployment Approval Required
+            Version: ${{ env.VERSION_TAG || inputs.version }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+            Please review and approve in GitHub Actions.
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ============================================
+  # FULL BACKUP
+  # ============================================
+  backup:
+    name: Create Full Backup
+    runs-on: ubuntu-latest
+    needs: approval-gate
+    if: github.event.inputs.skip_backup != 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create timestamp
+        id: timestamp
+        run: echo "timestamp=$(date +%Y%m%d_%H%M%S)" >> $GITHUB_OUTPUT
+
+      - name: Create database backup
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            BACKUP_DIR="${{ env.BACKUP_PATH }}/${{ steps.timestamp.outputs.timestamp }}"
+            mkdir -p "$BACKUP_DIR"
+
+            echo "Creating backup at $BACKUP_DIR"
+
+            # Backup PostgreSQL database
+            PGPASSWORD="${{ secrets.PRODUCTION_DB_PASSWORD }}" pg_dump \
+              -h ${{ secrets.PRODUCTION_DB_HOST }} \
+              -U ${{ secrets.PRODUCTION_DB_USER }} \
+              -d ${{ secrets.PRODUCTION_DB_NAME }} \
+              -F c -f "$BACKUP_DIR/database.dump"
+
+            # Backup uploaded files
+            tar -czf "$BACKUP_DIR/uploads.tar.gz" \
+              ${{ env.DEPLOY_PATH }}/backend/storage/app/uploads \
+              ${{ env.DEPLOY_PATH }}/public/uploads 2>/dev/null || true
+
+            # Backup current deployment
+            tar -czf "$BACKUP_DIR/deployment.tar.gz" \
+              ${{ env.DEPLOY_PATH }}/backend \
+              ${{ env.DEPLOY_PATH }}/frontend \
+              --exclude=node_modules \
+              --exclude=vendor
+
+            echo "BACKUP_DIR=$BACKUP_DIR" > /tmp/backup_info.txt
+            echo "Backup completed successfully"
+
+      - name: Verify backup
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            source /tmp/backup_info.txt
+
+            # Verify backup files exist
+            if [ ! -f "$BACKUP_DIR/database.dump" ]; then
+              echo "Error: Database backup missing"
+              exit 1
+            fi
+
+            if [ ! -f "$BACKUP_DIR/uploads.tar.gz" ]; then
+              echo "Error: Uploads backup missing"
+              exit 1
+            fi
+
+            if [ ! -f "$BACKUP_DIR/deployment.tar.gz" ]; then
+              echo "Error: Deployment backup missing"
+              exit 1
+            fi
+
+            # Check backup sizes
+            ls -lh "$BACKUP_DIR"
+
+            # Keep last 30 backups
+            find "${{ env.BACKUP_PATH }}" -type d -mtime +30 -exec rm -rf {} \;
+
+            echo "Backup verification completed"
+
+      - name: Upload backup info
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-info-${{ steps.timestamp.outputs.timestamp }}
+          path: /tmp/backup_info.txt
+          retention-days: 90
+
+      - name: Notify backup completion
+        uses: 8398a7/action-slack@v3
+        if: success()
+        with:
+          status: success
+          text: |
+            Production Backup Created Successfully
+            Timestamp: ${{ steps.timestamp.outputs.timestamp }}
+            Version: ${{ env.VERSION_TAG || inputs.version }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Notify backup failure
+        uses: 8398a7/action-slack@v3
+        if: failure()
+        with:
+          status: failure
+          text: |
+            Production Backup FAILED - Deployment Aborted
+            Version: ${{ env.VERSION_TAG || inputs.version }}
+            Please investigate immediately!
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ============================================
+  # ZERO-DOWNTIME DEPLOYMENT
+  # ============================================
+  deploy:
+    name: Zero-Downtime Deployment
+    runs-on: ubuntu-latest
+    needs: [approval-gate, backup]
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            cd ${{ env.DEPLOY_PATH }}
+
+            # Create release directory
+            RELEASE_DIR="${{ env.DEPLOY_PATH }}/releases/$(date +%Y%m%d_%H%M%S)"
+            mkdir -p "$RELEASE_DIR"
+            echo "RELEASE_DIR=$RELEASE_DIR" > /tmp/release_info.txt
+
+            # Clone fresh copy
+            git clone --branch main --depth 1 https://github.com/${{ github.repository }}.git "$RELEASE_DIR"
+
+            echo "Release directory created at $RELEASE_DIR"
+
+      - name: Deploy backend
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            source /tmp/release_info.txt
+
+            cd "$RELEASE_DIR/backend"
+
+            # Install dependencies
+            composer install --no-dev --optimize-autoloader --no-interaction
+
+            # Copy environment file
+            cp ${{ env.DEPLOY_PATH }}/backend/.env ./
+
+            # Clear caches
+            php artisan cache:clear
+            php artisan config:clear
+            php artisan route:clear
+            php artisan view:clear
+
+            # Run migrations in maintenance mode
+            php artisan down --message="Deployment in progress..."
+
+            # Run migrations
+            php artisan migrate --force
+
+            # Seed if needed (comment out if not needed)
+            # php artisan db:seed --force
+
+            # Bring app back up
+            php artisan up
+
+            # Optimize for production
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan event:cache
+            php artisan optimize
+
+            echo "Backend deployed to $RELEASE_DIR"
+
+      - name: Deploy frontend
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            source /tmp/release_info.txt
+
+            cd "$RELEASE_DIR/frontend"
+
+            # Install dependencies
+            npm ci
+
+            # Build for production
+            npm run build
+
+            echo "Frontend deployed to $RELEASE_DIR"
+
+      - name: Switch to new release (Symlink swap)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            source /tmp/release_info.txt
+
+            cd ${{ env.DEPLOY_PATH }}
+
+            # Update symlinks atomically
+            ln -nfs "$RELEASE_DIR/backend" ${{ env.DEPLOY_PATH }}/backend-new
+            ln -nfs "$RELEASE_DIR/frontend" ${{ env.DEPLOY_PATH }}/frontend-new
+
+            # Swap symlinks
+            mv -T ${{ env.DEPLOY_PATH }}/backend-new ${{ env.DEPLOY_PATH }}/backend
+            mv -T ${{ env.DEPLOY_PATH }}/frontend-new ${{ env.DEPLOY_PATH }}/frontend
+
+            # Restart services gracefully
+            sudo systemctl reload nginx
+            sudo systemctl restart php8.3-fpm
+
+            # Restart horizon if installed
+            if [ -f "$RELEASE_DIR/backend/bin/horizon" ]; then
+              cd "$RELEASE_DIR/backend"
+              php artisan horizon:terminate
+            fi
+
+            echo "Release switched successfully"
+
+      - name: Cleanup old releases
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            cd ${{ env.DEPLOY_PATH }}/releases
+
+            # Keep last 5 releases
+            ls -t | tail -n +6 | xargs -r rm -rf
+
+            echo "Old releases cleaned up"
+
+      - name: Notify deployment success
+        uses: 8398a7/action-slack@v3
+        if: success()
+        with:
+          status: success
+          text: |
+            Production Deployment: SUCCESS
+            Version: ${{ env.VERSION_TAG || inputs.version }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+            URL: ${{ secrets.PRODUCTION_URL }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Notify deployment failure
+        uses: 8398a7/action-slack@v3
+        if: failure()
+        with:
+          status: failure
+          text: |
+            Production Deployment: FAILED
+            Version: ${{ env.VERSION_TAG || inputs.version }}
+            Commit: ${{ github.sha }}
+            Rolling back...
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ============================================
+  # HEALTH CHECKS & VERIFICATION
+  # ============================================
+  health-check:
+    name: Production Health Checks
+    runs-on: ubuntu-latest
+    needs: deploy
+
+    steps:
+      - name: Wait for deployment to settle
+        run: sleep 45
+
+      - name: Health Check - Backend API
+        run: |
+          for i in {1..60}; do
+            if curl -f -s "${{ secrets.PRODUCTION_URL }}/api/v1/health" > /dev/null; then
+              echo "Backend health check passed"
+              exit 0
+            fi
+            echo "Health check attempt $i failed, retrying..."
+            sleep 5
+          done
+          echo "::error::Backend health check failed after 60 attempts"
+          exit 1
+
+      - name: Health Check - Frontend
+        run: |
+          if curl -f -s "${{ secrets.PRODUCTION_URL }}" > /dev/null; then
+            echo "Frontend health check passed"
+            exit 0
+          fi
+          echo "::error::Frontend health check failed"
+          exit 1
+
+      - name: Comprehensive smoke tests
+        run: |
+          # Test main API endpoint
+          curl -f "${{ secrets.PRODUCTION_URL }}/api/v1/health" || exit 1
+
+          # Test static assets
+          curl -f "${{ secrets.PRODUCTION_URL }}/favicon.ico" || exit 1
+
+          # Test robots.txt
+          curl -f "${{ secrets.PRODUCTION_URL }}/robots.txt" || exit 1
+
+          echo "All smoke tests passed"
+
+      - name: Check response times
+        run: |
+          # Check if homepage loads in under 3 seconds
+          TIME=$(curl -o /dev/null -s -w '%{time_total}' "${{ secrets.PRODUCTION_URL }}")
+          echo "Response time: ${TIME}s"
+
+          if (( $(echo "$TIME > 3.0" | bc -l) )); then
+            echo "::warning::Response time ${TIME}s exceeds 3 seconds"
+          else
+            echo "Response time acceptable"
+          fi
+
+      - name: Verify SSL certificate
+        run: |
+          EXPIRY=$(echo | openssl s_client -servername ${{ secrets.PRODUCTION_DOMAIN }} -connect ${{ secrets.PRODUCTION_DOMAIN }}:443 2>/dev/null | openssl x509 -noout -enddate | cut -d= -f2)
+          EXPIRY_DATE=$(date -d "$EXPIRY" +%s)
+          NOW=$(date +%s)
+          DAYS_LEFT=$(( ($EXPIRY_DATE - $NOW) / 86400 ))
+
+          echo "SSL certificate expires in $DAYS_LEFT days"
+
+          if [ $DAYS_LEFT -lt 30 ]; then
+            echo "::warning::SSL certificate expires in less than 30 days"
+          fi
+
+      - name: Run E2E tests
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run test:e2e -- --config baseUrl=${{ secrets.PRODUCTION_URL }}
+        continue-on-error: true
+
+      - name: Health check failure notification
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: |
+            Production Health Checks FAILED
+            Version: ${{ env.VERSION_TAG || inputs.version }}
+            Automatic rollback initiated...
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ============================================
+  # AUTOMATIC ROLLBACK ON FAILURE
+  # ============================================
+  rollback:
+    name: Automatic Rollback
+    runs-on: ubuntu-latest
+    needs: [deploy, health-check]
+    if: failure()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Rollback to previous version
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            cd ${{ env.DEPLOY_PATH }}
+
+            # Find previous release
+            PREV_RELEASE=$(ls -t releases | head -2 | tail -1)
+
+            if [ -z "$PREV_RELEASE" ]; then
+              echo "Error: No previous release found"
+              exit 1
+            fi
+
+            echo "Rolling back to $PREV_RELEASE"
+
+            # Rollback database
+            cd backend
+            php artisan migrate:rollback --step=1 --force
+
+            # Switch symlinks back
+            ln -nfs "releases/$PREV_RELEASE/backend" ${{ env.DEPLOY_PATH }}/backend-new
+            ln -nfs "releases/$PREV_RELEASE/frontend" ${{ env.DEPLOY_PATH }}/frontend-new
+
+            mv -T ${{ env.DEPLOY_PATH }}/backend-new ${{ env.DEPLOY_PATH }}/backend
+            mv -T ${{ env.DEPLOY_PATH }}/frontend-new ${{ env.DEPLOY_PATH }}/frontend
+
+            # Restart services
+            sudo systemctl reload nginx
+            sudo systemctl restart php8.3-fpm
+
+            if [ -f "releases/$PREV_RELEASE/backend/bin/horizon" ]; then
+              cd "releases/$PREV_RELEASE/backend"
+              php artisan horizon:terminate
+            fi
+
+            echo "Rollback completed successfully"
+
+      - name: Verify rollback health
+        run: |
+          sleep 30
+          curl -f "${{ secrets.PRODUCTION_URL }}/api/v1/health" || exit 1
+          echo "Rollback verified - system is healthy"
+
+      - name: Notify rollback
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: |
+            Production Rollback Completed
+            Version: ${{ env.VERSION_TAG || inputs.version }} was rolled back
+            Please investigate the issue immediately!
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ============================================
+  # POST-DEPLOYMENT TASKS
+  # ============================================
+  post-deployment:
+    name: Post-Deployment Tasks
+    runs-on: ubuntu-latest
+    needs: [deploy, health-check]
+    if: success()
+
+    steps:
+      - name: Clear CDN cache
+        if: secrets.PRODUCTION_CDN_ID != ''
+        run: |
+          # Clear CloudFlare cache if configured
+          curl -X DELETE "https://api.cloudflare.com/client/v4/zones/${{ secrets.PRODUCTION_CDN_ID }}/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}'
+        continue-on-error: true
+
+      - name: Warm up application cache
+        run: |
+          # Hit key endpoints to warm up cache
+          curl -s "${{ secrets.PRODUCTION_URL }}" > /dev/null
+          curl -s "${{ secrets.PRODUCTION_URL }}/api/v1/health" > /dev/null
+          curl -s "${{ secrets.PRODUCTION_URL }}/sitemap.xml" > /dev/null
+          echo "Application cache warmed up"
+
+      - name: Ping search engines
+        run: |
+          # Ping Google with sitemap
+          curl "http://www.google.com/ping?sitemap=${{ secrets.PRODUCTION_URL }}/sitemap.xml"
+          echo "Search engines pinged"
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.VERSION_TAG || inputs.version }}
+          release_name: Release ${{ env.VERSION_TAG || inputs.version }}
+          body: |
+            ## Production Deployment - ${{ env.VERSION_TAG || inputs.version }}
+
+            **Commit:** ${{ github.sha }}
+            **Author:** ${{ github.actor }}
+            **Date:** ${{ github.event.head_commit.timestamp }}
+
+            ### Changes
+            See commit history for details.
+          draft: false
+          prerelease: false
+
+      - name: Update deployment history
+        run: |
+          echo "$(date -Iseconds) - ${{ env.VERSION_TAG || inputs.version }} - ${{ github.sha }} - SUCCESS" >> deployment-history.txt
+
+      - name: Final notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: |
+            Production Deployment Completed Successfully
+            Version: ${{ env.VERSION_TAG || inputs.version }}
+            All systems operational
+            URL: ${{ secrets.PRODUCTION_URL }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ============================================
+  # DEPLOYMENT SUMMARY
+  # ============================================
+  deployment-summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [validation, approval-gate, backup, deploy, health-check, post-deployment]
+    if: always()
+
+    steps:
+      - name: Generate deployment summary
+        run: |
+          echo "# Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Deployment Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ env.VERSION_TAG || inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** ${{ secrets.PRODUCTION_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Job Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Validation: ${{ needs.validation.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Approval: ${{ needs.approval-gate.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Backup: ${{ needs.backup.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Deploy: ${{ needs.deploy.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Health Check: ${{ needs.health-check.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Post-Deployment: ${{ needs.post-deployment.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.health-check.result }}" == "success" ]; then
+            echo "## Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Status: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi

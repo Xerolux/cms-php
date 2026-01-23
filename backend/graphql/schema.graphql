@@ -1,0 +1,482 @@
+# XQUANTORIA GraphQL Schema
+# This file defines the GraphQL API structure for the CMS
+
+scalar DateTime @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
+scalar Upload @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\Upload")
+
+# Public queries (no authentication required)
+type Query {
+    # Public Post Queries
+    publicPosts(
+        first: Int
+        page: Int
+        category_id: ID
+        tag_id: ID
+        search: String
+        language: String
+    ): PostConnection! @paginate(type: "paginator" scoped: "published", model: "App\\Models\\Post")
+
+    publicPost(id: ID! @eq): Post @find(model: "App\\Models\\Post")
+    publicPostBySlug(slug: String! @eq): Post @find(model: "App\\Models\\Post")
+
+    # Public Category Queries
+    publicCategories(
+        first: Int
+        page: Int
+        language: String
+    ): CategoryConnection! @paginate(type: "paginator" scoped: "", model: "App\\Models\\Category")
+
+    publicCategory(id: ID! @eq): Category @find(model: "App\\Models\\Category")
+    publicCategoryBySlug(slug: String! @eq): Category @find(model: "App\\Models\\Category")
+
+    # Public Tag Queries
+    publicTags(
+        first: Int
+        page: Int
+        language: String
+    ): TagConnection! @paginate(type: "paginator" scoped: "", model: "App\\Models\\Tag")
+
+    publicTag(id: ID! @eq): Tag @find(model: "App\\Models\\Tag")
+
+    # Public Page Queries
+    publicPages(
+        first: Int
+        page: Int
+        language: String
+    ): PageConnection! @paginate(type: "paginator" scoped: "published", model: "App\\Models\\Page")
+
+    publicPage(id: ID! @eq): Page @find(model: "App\\Models\\Page")
+    publicPageBySlug(slug: String! @eq): Page @find(model: "App\\Models\\Page")
+
+    # Authentication
+    me: User @guard(with: ["api"])
+}
+
+# Protected mutations (authentication required)
+extend type Mutation @guard(with: ["api"]) {
+    # Post Mutations
+    createPost(input: CreatePostInput! @spread): Post! @create
+    updatePost(input: UpdatePostInput! @spread): Post! @update
+    deletePost(id: ID!): Post! @delete
+
+    submitForReview(id: ID!): Post! @field(resolver: "App\\GraphQL\\Mutations\\PostMutations@submitForReview")
+    approvePost(id: ID!, feedback: String): Post! @field(resolver: "App\\GraphQL\\Mutations\\PostMutations@approvePost")
+    requestChanges(id: ID!, feedback: String!): Post! @field(resolver: "App\\GraphQL\\Mutations\\PostMutations@requestChanges")
+
+    # Category Mutations
+    createCategory(input: CreateCategoryInput! @spread): Category! @create
+    updateCategory(input: UpdateCategoryInput! @spread): Category! @update
+    deleteCategory(id: ID!): Category! @delete
+
+    # Tag Mutations
+    createTag(input: CreateTagInput! @spread): Tag! @create
+    updateTag(input: UpdateTagInput! @spread): Tag! @update
+    deleteTag(id: ID!): Tag! @delete
+
+    # User Mutations (Admin only)
+    updateUser(input: UpdateUserInput! @spread): User! @update
+    deleteUser(id: ID!): User! @delete
+
+    # Comment Mutations
+    createComment(input: CreateCommentInput! @spread): Comment! @create
+    updateComment(input: UpdateCommentInput! @spread): Comment! @update
+    deleteComment(id: ID!): Comment! @delete
+    moderateComment(id: ID!, status: String!): Comment! @field(resolver: "App\\GraphQL\\Mutations\\CommentMutations@moderate")
+
+    # Media Mutations
+    uploadMedia(file: Upload!, title: String, alt_text: String): Media! @field(resolver: "App\\GraphQL\\Mutations\\MediaMutations@upload")
+    updateMedia(input: UpdateMediaInput! @spread): Media! @update
+    deleteMedia(id: ID!): Media! @delete
+
+    # Page Mutations
+    createPage(input: CreatePageInput! @spread): Page! @create
+    updatePage(input: UpdatePageInput! @spread): Page! @update
+    deletePage(id: ID!): Page! @delete
+}
+
+# Admin-protected queries (admin/editor only)
+extend type Query @guard(with: ["api"]) {
+    # All Posts (including drafts)
+    posts(
+        first: Int
+        page: Int
+        status: String
+        category_id: ID
+        tag_id: ID
+        author_id: ID
+        search: String
+        language: String
+    ): PostConnection! @paginate(type: "paginator" scoped: "", model: "App\\Models\\Post")
+
+    post(id: ID! @eq): Post @find(model: "App\\Models\\Post")
+
+    # Users
+    users(
+        first: Int
+        page: Int
+        role: String
+        search: String
+    ): UserConnection! @paginate(type: "paginator" scoped: "", model: "App\\Models\\User")
+
+    user(id: ID! @eq): User @find(model: "App\\Models\\User")
+
+    # All Categories
+    categories(
+        first: Int
+        page: Int
+        parent_id: ID
+        language: String
+    ): CategoryConnection! @paginate(type: "paginator" scoped: "", model: "App\\Models\\Category")
+
+    category(id: ID! @eq): Category @find(model: "App\\Models\\Category")
+
+    # All Tags
+    tags(
+        first: Int
+        page: Int
+        search: String
+        language: String
+    ): TagConnection! @paginate(type: "paginator" scoped: "", model: "App\\Models\\Tag")
+
+    tag(id: ID! @eq): Tag @find(model: "App\\Models\\Tag")
+    tagBySlug(slug: String! @eq): Tag @find(model: "App\\Models\\Tag")
+
+    # Media
+    media(
+        first: Int
+        page: Int
+        type: String
+    ): MediaConnection! @paginate(type: "paginator" scoped: "", model: "App\\Models\\Media")
+
+    mediaItem(id: ID! @eq): Media @find(model: "App\\Models\\Media")
+
+    # Comments
+    comments(
+        first: Int
+        page: Int
+        post_id: ID
+        status: String
+    ): CommentConnection! @paginate(type: "paginator" scoped: "", model: "App\\Models\\Comment")
+
+    comment(id: ID! @eq): Comment @find(model: "App\\Models\\Comment")
+
+    # Pages
+    pages(
+        first: Int
+        page: Int
+        status: String
+        language: String
+    ): PageConnection! @paginate(type: "paginator" scoped: "", model: "App\\Models\\Page")
+
+    page(id: ID! @eq): Page @find(model: "App\\Models\\Page")
+}
+
+# Types
+type Post {
+    id: ID!
+    title: String!
+    slug: String!
+    content: String!
+    excerpt: String
+    status: String!
+    is_hidden: Boolean!
+    published_at: DateTime
+    view_count: Int!
+    meta_title: String
+    meta_description: String
+    meta_robots: String
+    language: String
+    created_at: DateTime!
+    updated_at: DateTime!
+    submitted_for_review_at: DateTime
+    approved_at: DateTime
+    changes_requested_at: DateTime
+    reviewer_feedback: String
+
+    author: User! @belongsTo
+    featured_image: Media @belongsTo
+    categories: [Category!]! @belongsToMany
+    tags: [Tag!]! @belongsToMany
+    comments: [Comment!]! @hasMany
+    revisions: [PostRevision!]! @hasMany
+    social_shares: [SocialShare!]! @hasMany
+    downloads: [Download!]! @belongsToMany
+    assignees: [User!]! @belongsToMany
+    approved_by: User @belongsTo
+    translation_parent: Post @belongsTo(relation: "translationParent")
+    translations: [Post!]! @hasMany
+
+    is_scheduled: Boolean! @field(resolver: "App\\GraphQL\\Types\\PostType@isScheduled")
+    is_published: Boolean! @field(resolver: "App\\GraphQL\\Types\\PostType@isPublished")
+    full_url: String! @field(resolver: "App\\GraphQL\\Types\\PostType@fullUrl")
+}
+
+type User {
+    id: ID!
+    name: String!
+    email: String!
+    display_name: String
+    role: String!
+    avatar_url: String
+    bio: String
+    is_active: Boolean!
+    last_login_at: DateTime
+    preferred_locale: String
+    created_at: DateTime!
+    updated_at: DateTime!
+    email_verified_at: DateTime
+
+    has_two_factor_enabled: Boolean! @field(resolver: "App\\GraphQL\\Types\\UserType@hasTwoFactorEnabled")
+
+    posts: [Post!]! @hasMany
+    media: [Media!]! @hasMany
+    assigned_posts: [Post!]! @belongsToMany
+    approved_posts: [Post!]! @hasMany
+}
+
+type Category {
+    id: ID!
+    name: String!
+    slug: String!
+    description: String
+    color: String
+    icon_url: String
+    meta_title: String
+    meta_description: String
+    language: String
+    created_at: DateTime!
+    updated_at: DateTime!
+
+    parent: Category @belongsTo
+    children: [Category!]! @hasMany
+    posts: [Post!]! @belongsToMany
+}
+
+type Tag {
+    id: ID!
+    name: String!
+    slug: String!
+    language: String
+    usage_count: Int!
+    created_at: DateTime!
+    updated_at: DateTime!
+
+    posts: [Post!]! @belongsToMany
+}
+
+type Media {
+    id: ID!
+    filename: String!
+    original_filename: String!
+    mime_type: String!
+    size: Int!
+    path: String!
+    url: String!
+    title: String
+    alt_text: String
+    width: Int
+    height: Int
+    created_at: DateTime!
+    updated_at: DateTime!
+
+    uploaded_by: User! @belongsTo
+    posts: [Post!]! @belongsToMany
+}
+
+type Comment {
+    id: ID!
+    content: String!
+    status: String!
+    created_at: DateTime!
+    updated_at: DateTime!
+
+    post: Post! @belongsTo
+    author: User! @belongsTo
+    parent: Comment @belongsTo
+    replies: [Comment!]! @hasMany
+}
+
+type PostRevision {
+    id: ID!
+    title: String!
+    content: String!
+    excerpt: String
+    created_at: DateTime!
+
+    post: Post! @belongsTo
+    author: User! @belongsTo
+}
+
+type SocialShare {
+    id: ID!
+    platform: String!
+    share_count: Int!
+    created_at: DateTime!
+    updated_at: DateTime!
+
+    post: Post! @belongsTo
+}
+
+type Download {
+    id: ID!
+    title: String!
+    filename: String!
+    size: Int!
+    download_count: Int!
+    created_at: DateTime!
+    updated_at: DateTime!
+
+    uploaded_by: User! @belongsTo
+    posts: [Post!]! @belongsToMany
+}
+
+type Page {
+    id: ID!
+    title: String!
+    slug: String!
+    content: String!
+    status: String!
+    meta_title: String
+    meta_description: String
+    language: String
+    created_at: DateTime!
+    updated_at: DateTime!
+
+    author: User! @belongsTo
+    translation_parent: Page @belongsTo(relation: "translationParent")
+    translations: [Page!]! @hasMany
+}
+
+# Input Types
+input CreatePostInput {
+    title: String!
+    slug: String!
+    content: String!
+    excerpt: String
+    featured_image_id: ID
+    status: String! @rules(apply: ["in:draft,published,scheduled"])
+    is_hidden: Boolean
+    published_at: DateTime
+    meta_title: String
+    meta_description: String
+    meta_robots: String
+    language: String
+    translation_of_id: ID
+    category_ids: [ID!] @arrayKey
+    tag_ids: [ID!] @arrayKey
+    download_ids: [ID!] @arrayKey
+}
+
+input UpdatePostInput {
+    id: ID!
+    title: String
+    slug: String
+    content: String
+    excerpt: String
+    featured_image_id: ID
+    status: String @rules(apply: ["in:draft,published,scheduled"])
+    is_hidden: Boolean
+    published_at: DateTime
+    meta_title: String
+    meta_description: String
+    meta_robots: String
+    language: String
+    translation_of_id: ID
+    category_ids: [ID!] @arrayKey
+    tag_ids: [ID!] @arrayKey
+    download_ids: [ID!] @arrayKey
+}
+
+input CreateCategoryInput {
+    name: String!
+    slug: String!
+    description: String
+    parent_id: ID
+    color: String
+    icon_url: String
+    meta_title: String
+    meta_description: String
+    language: String
+    translation_of_id: ID
+}
+
+input UpdateCategoryInput {
+    id: ID!
+    name: String
+    slug: String
+    description: String
+    parent_id: ID
+    color: String
+    icon_url: String
+    meta_title: String
+    meta_description: String
+    language: String
+    translation_of_id: ID
+}
+
+input CreateTagInput {
+    name: String!
+    slug: String!
+    language: String
+    translation_of_id: ID
+}
+
+input UpdateTagInput {
+    id: ID!
+    name: String
+    slug: String
+    language: String
+    translation_of_id: ID
+}
+
+input UpdateUserInput {
+    id: ID!
+    name: String
+    email: String @rules(apply: ["email", "unique:users,email {{$id}}"])
+    display_name: String
+    avatar_url: String
+    bio: String
+    role: String @rules(apply: ["in:admin,editor,author,subscriber"])
+    is_active: Boolean
+    preferred_locale: String
+}
+
+input CreateCommentInput {
+    post_id: ID!
+    content: String!
+    parent_id: ID
+}
+
+input UpdateCommentInput {
+    id: ID!
+    content: String
+}
+
+input UpdateMediaInput {
+    id: ID!
+    title: String
+    alt_text: String
+}
+
+input CreatePageInput {
+    title: String!
+    slug: String!
+    content: String!
+    status: String! @rules(apply: ["in:draft,published"])
+    meta_title: String
+    meta_description: String
+    language: String
+    translation_of_id: ID
+}
+
+input UpdatePageInput {
+    id: ID!
+    title: String
+    slug: String
+    content: String
+    status: String @rules(apply: ["in:draft,published"])
+    meta_title: String
+    meta_description: String
+    language: String
+    translation_of_id: ID
+}

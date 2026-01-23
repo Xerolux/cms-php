@@ -36,4 +36,13 @@ return [
         'url' => env('DEEPL_API_URL', 'https://api-free.deepl.com/v2/translate'),
     ],
 
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'api_url' => env('OPENAI_API_URL', 'https://api.openai.com/v1'),
+        'model' => env('OPENAI_MODEL', 'gpt-4'),
+        'embedding_model' => env('OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small'),
+        'max_tokens' => env('OPENAI_MAX_TOKENS', 4000),
+        'temperature' => env('OPENAI_TEMPERATURE', 0.7),
+    ],
+
 ];

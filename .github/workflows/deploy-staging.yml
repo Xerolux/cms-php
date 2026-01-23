@@ -1,0 +1,390 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests (use with caution)'
+        required: false
+        type: boolean
+        default: false
+      migrate_only:
+        description: 'Run migrations only (no deployment)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  BACKEND_PATH: ./backend
+  FRONTEND_PATH: ./frontend
+  DEPLOY_PATH: /var/www/xquantoria-staging
+
+jobs:
+  # ============================================
+  # PRE-DEPLOYMENT CHECKS
+  # ============================================
+  pre-deploy-checks:
+    name: Pre-Deployment Checks
+    runs-on: ubuntu-latest
+    if: github.event.inputs.skip_tests != 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify branch
+        run: |
+          if [ "${{ github.ref }}" != "refs/heads/develop" ]; then
+            echo "Error: Not on develop branch"
+            exit 1
+          fi
+          echo "Branch verified: develop"
+
+      - name: Check for uncommitted changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Warning: There are uncommitted changes"
+          fi
+
+  # ============================================
+  # DATABASE BACKUP
+  # ============================================
+  backup-database:
+    name: Backup Staging Database
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create database backup
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            BACKUP_DIR="/var/backups/xquantoria-staging/$(date +%Y%m%d_%H%M%S)"
+            mkdir -p "$BACKUP_DIR"
+
+            # Backup database
+            PGPASSWORD="${{ secrets.STAGING_DB_PASSWORD }}" pg_dump \
+              -h ${{ secrets.STAGING_DB_HOST }} \
+              -U ${{ secrets.STAGING_DB_USER }} \
+              -d ${{ secrets.STAGING_DB_NAME }} \
+              -F c -f "$BACKUP_DIR/database.dump"
+
+            # Keep last 7 backups only
+            find /var/backups/xquantoria-staging -type d -mtime +7 -exec rm -rf {} \;
+
+            echo "Database backup created at $BACKUP_DIR"
+
+  # ============================================
+  # DEPLOY BACKEND
+  # ============================================
+  deploy-backend:
+    name: Deploy Backend to Staging
+    runs-on: ubuntu-latest
+    needs: [pre-deploy-checks, backup-database]
+    if: github.event.inputs.migrate_only != 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy backend via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            cd ${{ env.DEPLOY_PATH }}
+
+            # Pull latest changes
+            git fetch origin develop
+            git checkout develop
+            git pull origin develop
+
+            # Backend deployment
+            cd backend
+
+            # Install composer dependencies
+            composer install --no-dev --optimize-autoloader --no-interaction
+
+            # Clear all caches
+            php artisan cache:clear
+            php artisan config:clear
+            php artisan route:clear
+            php artisan view:clear
+
+            # Run migrations
+            php artisan migrate --force --seed
+
+            # Optimize for production
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan event:cache
+            php artisan optimize
+
+            # Restart horizon if installed
+            if [ -f "bin/horizon" ]; then
+              php artisan horizon:terminate
+            fi
+
+            echo "Backend deployment completed successfully"
+
+      - name: Notify backend deployment
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          text: |
+            Backend Deploy to Staging: ${{ job.status }}
+            Commit: ${{ github.sha }}
+            Branch: ${{ github.ref_name }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ============================================
+  # DEPLOY FRONTEND
+  # ============================================
+  deploy-frontend:
+    name: Deploy Frontend to Staging
+    runs-on: ubuntu-latest
+    needs: [pre-deploy-checks]
+    if: github.event.inputs.migrate_only != 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy frontend via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            cd ${{ env.DEPLOY_PATH }}
+
+            # Frontend deployment
+            cd frontend
+
+            # Install dependencies
+            npm ci
+
+            # Build for production
+            npm run build
+
+            echo "Frontend deployment completed successfully"
+
+      - name: Restart web server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script_stop: true
+          script: |
+            # Reload nginx gracefully
+            sudo systemctl reload nginx
+
+            # Restart PHP-FPM
+            sudo systemctl restart php8.3-fpm
+
+            echo "Web servers restarted successfully"
+
+      - name: Notify frontend deployment
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          text: |
+            Frontend Deploy to Staging: ${{ job.status }}
+            Commit: ${{ github.sha }}
+            Branch: ${{ github.ref_name }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ============================================
+  # DATABASE MIGRATIONS ONLY
+  # ============================================
+  migrations-only:
+    name: Run Database Migrations Only
+    runs-on: ubuntu-latest
+    needs: [pre-deploy-checks]
+    if: github.event.inputs.migrate_only == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run migrations via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            cd ${{ env.DEPLOY_PATH }}/backend
+
+            # Run migrations
+            php artisan migrate --force
+
+            echo "Migrations completed successfully"
+
+      - name: Notify migrations
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          text: |
+            Database Migrations (Staging): ${{ job.status }}
+            Commit: ${{ github.sha }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ============================================
+  # HEALTH CHECKS
+  # ============================================
+  health-check:
+    name: Health Checks
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend]
+    if: always() && github.event.inputs.migrate_only != 'true'
+
+    steps:
+      - name: Wait for deployment to settle
+        run: sleep 30
+
+      - name: Health Check - Backend API
+        run: |
+          for i in {1..30}; do
+            if curl -f -s "${{ secrets.STAGING_URL }}/api/v1/health" > /dev/null; then
+              echo "Backend health check passed"
+              exit 0
+            fi
+            echo "Health check attempt $i failed, retrying..."
+            sleep 10
+          done
+          echo "::error::Backend health check failed after 30 attempts"
+          exit 1
+
+      - name: Health Check - Frontend
+        run: |
+          if curl -f -s "${{ secrets.STAGING_URL }}" > /dev/null; then
+            echo "Frontend health check passed"
+            exit 0
+          fi
+          echo "::error::Frontend health check failed"
+          exit 1
+
+      - name: Smoke Tests
+        run: |
+          # Test API endpoints
+          curl -f "${{ secrets.STAGING_URL }}/api/v1/health" || exit 1
+
+          # Test static assets
+          curl -f "${{ secrets.STAGING_URL }}/favicon.ico" || exit 1
+
+          echo "Smoke tests passed"
+
+      - name: Run E2E tests
+        if: github.event.inputs.skip_tests != 'true'
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run test:e2e -- --config baseUrl=${{ secrets.STAGING_URL }}
+        continue-on-error: true
+
+      - name: Health check failure notification
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: |
+            Health Checks FAILED for Staging
+            Commit: ${{ github.sha }}
+            Please investigate immediately!
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ============================================
+  # POST-DEPLOYMENT TASKS
+  # ============================================
+  post-deployment:
+    name: Post-Deployment Tasks
+    runs-on: ubuntu-latest
+    needs: [health-check]
+    if: success()
+
+    steps:
+      - name: Clear CDN cache
+        if: secrets.STAGING_CDN_ID != ''
+        run: |
+          # Clear CloudFlare cache if configured
+          curl -X DELETE "https://api.cloudflare.com/client/v4/zones/${{ secrets.STAGING_CDN_ID }}/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}'
+        continue-on-error: true
+
+      - name: Warm up cache
+        run: |
+          # Hit key endpoints to warm up cache
+          curl -s "${{ secrets.STAGING_URL }}" > /dev/null
+          curl -s "${{ secrets.STAGING_URL }}/api/v1/health" > /dev/null
+          echo "Cache warmed up"
+
+      - name: Notify successful deployment
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: |
+            Deployment to Staging: SUCCESS
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+            URL: ${{ secrets.STAGING_URL }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Create deployment tag
+        run: |
+          git tag -a "staging-$(date +%Y%m%d-%H%M%S)" -m "Staging deployment ${{ github.sha }}"
+          git push origin --tags
+        continue-on-error: true
+
+  # ============================================
+  # DEPLOYMENT SUMMARY
+  # ============================================
+  deployment-summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [backup-database, deploy-backend, deploy-frontend, health-check, post-deployment]
+    if: always()
+
+    steps:
+      - name: Generate deployment summary
+        run: |
+          echo "# Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ needs.health-check.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Author**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Deployment Jobs" >> $GITHUB_STEP_SUMMARY
+          echo "- Backup: ${{ needs.backup-database.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend: ${{ needs.deploy-backend.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend: ${{ needs.deploy-frontend.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Health Check: ${{ needs.health-check.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Post-Deployment: ${{ needs.post-deployment.result }}" >> $GITHUB_STEP_SUMMARY

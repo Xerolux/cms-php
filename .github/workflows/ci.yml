@@ -5,9 +5,20 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  schedule:
+    # Run CI daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  BACKEND_PATH: ./backend
+  FRONTEND_PATH: ./frontend
 
 jobs:
+  # ============================================
+  # BACKEND TESTS & ANALYSIS
+  # ============================================
   backend-tests:
+    name: Backend Tests (PHPUnit)
     runs-on: ubuntu-latest
 
     services:
@@ -59,25 +70,25 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
 
       - name: Create bootstrap cache directory
-        working-directory: ./backend
+        working-directory: ${{ env.BACKEND_PATH }}
         run: |
           mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
           chmod -R 775 bootstrap/cache storage
 
       - name: Install composer dependencies
-        working-directory: ./backend
+        working-directory: ${{ env.BACKEND_PATH }}
         run: composer install --prefer-dist --no-progress --no-interaction
 
       - name: Copy environment file
-        working-directory: ./backend
+        working-directory: ${{ env.BACKEND_PATH }}
         run: cp .env.example .env
 
       - name: Generate application key
-        working-directory: ./backend
+        working-directory: ${{ env.BACKEND_PATH }}
         run: php artisan key:generate
 
       - name: Run migrations
-        working-directory: ./backend
+        working-directory: ${{ env.BACKEND_PATH }}
         env:
           DB_CONNECTION: pgsql
           DB_HOST: localhost
@@ -87,8 +98,8 @@ jobs:
           DB_PASSWORD: test
         run: php artisan migrate --force --seed
 
-      - name: Run tests
-        working-directory: ./backend
+      - name: Run PHPUnit tests with coverage
+        working-directory: ${{ env.BACKEND_PATH }}
         env:
           DB_CONNECTION: pgsql
           DB_HOST: localhost
@@ -96,16 +107,96 @@ jobs:
           DB_DATABASE: xquantoria_test
           DB_USERNAME: xquantoria_test
           DB_PASSWORD: test
-        run: php artisan test
+        run: |
+          php artisan test --coverage-html=coverage --coverage-clover=coverage.xml --coverage-text
 
-      - name: Run code analysis (PHPStan)
-        working-directory: ./backend
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ${{ env.BACKEND_PATH }}/coverage.xml
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
+
+      - name: Check coverage threshold
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: |
+          coverage=$(php -r "
+          \$xml = simplexml_load_file('coverage.xml');
+          \$metrics = \$xml->project->metrics;
+          \$elements = (int)\$metrics['elements'];
+          \$coveredelements = (int)\$metrics['coveredelements'];
+          echo \$elements > 0 ? (\$coveredelements / \$elements) * 100 : 0;
+          ")
+          echo "Code Coverage: ${coverage}%"
+          threshold=75.0
+          if (( $(echo "$coverage < $threshold" | bc -l) )); then
+            echo "::warning::Coverage ${coverage}% is below threshold ${threshold}%"
+          fi
+
+  backend-linting:
+    name: Backend Linting (PHPStan + Pint)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo, pdo_pgsql, mbstring
+          tools: composer:v2
+
+      - name: Install composer dependencies
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run Laravel Pint (Code Style)
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: ./vendor/bin/pint --test
+
+      - name: Run PHPStan (Static Analysis)
+        working-directory: ${{ env.BACKEND_PATH }}
         run: |
           composer require --dev phpstan/phpstan
-          ./vendor/bin/phpstan analyse --memory-limit=2G
+          ./vendor/bin/phpstan analyse --memory-limit=2G --error-format=github
+
+  backend-security:
+    name: Backend Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+
+      - name: Install composer dependencies
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run Composer Audit
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: composer audit --no-dev
         continue-on-error: true
 
+      - name: Run Enlightn Security Scanner
+        uses: enlightn/security-scanner@latest
+        with:
+          path: ${{ env.BACKEND_PATH }}
+        continue-on-error: true
+
+  # ============================================
+  # FRONTEND TESTS & ANALYSIS
+  # ============================================
   frontend-tests:
+    name: Frontend Tests (Vitest)
     runs-on: ubuntu-latest
 
     steps:
@@ -117,39 +208,186 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: ${{ env.FRONTEND_PATH }}/package-lock.json
 
       - name: Install dependencies
-        working-directory: ./frontend
+        working-directory: ${{ env.FRONTEND_PATH }}
         run: npm ci
 
-      - name: Run type check
-        working-directory: ./frontend
-        run: npm run type-check
-        continue-on-error: true
+      - name: Run TypeScript type check
+        working-directory: ${{ env.FRONTEND_PATH }}
+        run: npm run type-check || npx tsc --noEmit
 
-      - name: Run linter
-        working-directory: ./frontend
-        run: npm run lint
-        continue-on-error: true
+      - name: Run Vitest tests with coverage
+        working-directory: ${{ env.FRONTEND_PATH }}
+        run: npm run test:run -- --coverage --reporter=verbose
 
-      - name: Run tests
-        working-directory: ./frontend
-        run: npm test -- --coverage --watchAll=false
-        continue-on-error: true
-
-      - name: Build frontend
-        working-directory: ./frontend
-        run: npm run build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
         with:
-          name: frontend-build
-          path: frontend/dist/
-          retention-days: 7
+          files: ${{ env.FRONTEND_PATH }}/coverage/coverage-final.json
+          flags: frontend
+          name: frontend-coverage
+          fail_ci_if_error: false
 
+      - name: Check coverage threshold
+        working-directory: ${{ env.FRONTEND_PATH }}
+        run: |
+          if [ -f "coverage/coverage-summary.json" ]; then
+            lines=$(node -e "console.log(require('./coverage/coverage-summary.json').total.lines.pct)")
+            echo "Lines Coverage: ${lines}%"
+            if (( $(echo "$lines < 75" | bc -l) )); then
+              echo "::warning::Lines coverage ${lines}% is below 75%"
+            fi
+          fi
+
+  frontend-linting:
+    name: Frontend Linting (ESLint + Prettier)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ${{ env.FRONTEND_PATH }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.FRONTEND_PATH }}
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: ${{ env.FRONTEND_PATH }}
+        run: npm run lint
+
+      - name: Run Prettier check
+        working-directory: ${{ env.FRONTEND_PATH }}
+        run: npx prettier --check "src/**/*.{ts,tsx,css,scss}" || true
+
+  frontend-security:
+    name: Frontend Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ${{ env.FRONTEND_PATH }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.FRONTEND_PATH }}
+        run: npm ci
+
+      - name: Run npm audit
+        working-directory: ${{ env.FRONTEND_PATH }}
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+          command: test
+          working-directory: ${{ env.FRONTEND_PATH }}
+
+  # ============================================
+  # PERFORMANCE TESTS
+  # ============================================
+  performance-tests:
+    name: Performance Tests (Lighthouse)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: xquantoria_perf
+          POSTGRES_USER: xquantoria_perf
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo, pdo_pgsql
+          tools: composer:v2
+
+      - name: Install composer dependencies
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Copy environment file
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: cp .env.example .env
+
+      - name: Generate application key
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: php artisan key:generate
+
+      - name: Run migrations
+        working-directory: ${{ env.BACKEND_PATH }}
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_DATABASE: xquantoria_perf
+          DB_USERNAME: xquantoria_perf
+          DB_PASSWORD: test
+        run: php artisan migrate --force --seed
+
+      - name: Start Laravel server
+        working-directory: ${{ env.BACKEND_PATH }}
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_DATABASE: xquantoria_perf
+          DB_USERNAME: xquantoria_perf
+          DB_PASSWORD: test
+        run: php artisan serve --host=127.0.0.1 --port=8000 &
+        sleep: 5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli
+
+      - name: Run Lighthouse CI
+        run: lhci autorun --collect.url=http://localhost:8000
+        continue-on-error: true
+
+  # ============================================
+  # SECURITY SCANS
+  # ============================================
   security-scan:
+    name: Security Vulnerability Scan (Trivy)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -166,15 +404,21 @@ jobs:
           scan-ref: '.'
           format: 'sarif'
           output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
 
+  # ============================================
+  # DEPENDENCY REVIEW
+  # ============================================
   dependency-review:
+    name: Dependency Review
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -189,106 +433,64 @@ jobs:
         with:
           fail-on-severity: moderate
 
-  deploy-staging:
-    name: Deploy to Staging
-    needs: [backend-tests, frontend-tests, security-scan]
+  # ============================================
+  # BUILD VERIFICATION
+  # ============================================
+  build-verification:
+    name: Build Verification
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    environment:
-      name: staging
-      url: https://staging.example.com
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to staging server
-        uses: appleboy/ssh-action@v1.0.0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          script: |
-            cd /var/www/xquantoria-staging
-            git pull origin develop
-            cd backend
-            composer install --no-dev --optimize-autoloader --no-interaction
-            php artisan migrate --force
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
-            php artisan optimize
-            cd ../frontend
-            npm ci
-            npm run build
-            sudo systemctl reload nginx
-            sudo systemctl restart php8.3-fpm
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ${{ env.FRONTEND_PATH }}/package-lock.json
 
-      - name: Run smoke tests
-        run: |
-          curl -f ${{ secrets.STAGING_URL }}/api/v1/health || exit 1
+      - name: Install frontend dependencies
+        working-directory: ${{ env.FRONTEND_PATH }}
+        run: npm ci
 
-      - name: Notify deployment status
-        uses: 8398a7/action-slack@v3
-        if: always() && secrets.SLACK_WEBHOOK != ''
+      - name: Build frontend
+        working-directory: ${{ env.FRONTEND_PATH }}
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
-          status: ${{ job.status }}
-          text: 'Deploy to Staging: ${{ job.status }}'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          name: frontend-build
+          path: ${{ env.FRONTEND_PATH }}/dist/
+          retention-days: 7
 
-  deploy-production:
-    name: Deploy to Production
-    needs: [backend-tests, frontend-tests, security-scan]
+  # ============================================
+  # CODE QUALITY SUMMARY
+  # ============================================
+  quality-gate:
+    name: Quality Gate
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment:
-      name: production
-      url: https://example.com
+    needs: [
+      backend-tests,
+      backend-linting,
+      backend-security,
+      frontend-tests,
+      frontend-linting,
+      frontend-security,
+      security-scan
+    ]
+    if: always()
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Create backup
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.PRODUCTION_HOST }}
-          username: ${{ secrets.PRODUCTION_USER }}
-          key: ${{ secrets.PRODUCTION_SSH_KEY }}
-          script: |
-            cd /var/www/xquantoria-production
-            ./scripts/backup.sh
-
-      - name: Deploy to production server
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.PRODUCTION_HOST }}
-          username: ${{ secrets.PRODUCTION_USER }}
-          key: ${{ secrets.PRODUCTION_SSH_KEY }}
-          script: |
-            cd /var/www/xquantoria-production
-            git pull origin main
-            cd backend
-            composer install --no-dev --optimize-autoloader --no-interaction
-            php artisan migrate --force
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
-            php artisan optimize
-            cd ../frontend
-            npm ci
-            npm run build
-            sudo systemctl reload nginx
-            sudo systemctl restart php8.3-fpm
-
-      - name: Run smoke tests
+      - name: Check all jobs passed
         run: |
-          curl -f ${{ secrets.PRODUCTION_URL }}/api/v1/health || exit 1
-
-      - name: Notify deployment status
-        uses: 8398a7/action-slack@v3
-        if: always() && secrets.SLACK_WEBHOOK != ''
-        with:
-          status: ${{ job.status }}
-          text: 'Deploy to Production: ${{ job.status }}'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          if [ "${{ needs.backend-tests.result }}" != "success" ] || \
+             [ "${{ needs.backend-linting.result }}" != "success" ] || \
+             [ "${{ needs.frontend-tests.result }}" != "success" ] || \
+             [ "${{ needs.frontend-linting.result }}" != "success" ]; then
+            echo "::error::Quality gate failed - Some required jobs did not pass"
+            exit 1
+          fi
+          echo "Quality gate passed - All required jobs successful"

@@ -542,3 +542,55 @@ export interface DatabaseStats {
   tables: number;
   status: 'connected' | 'disconnected' | 'error';
 }
+
+// Webhook Types
+export interface Webhook {
+  id: number;
+  name: string;
+  url: string;
+  events: string[];
+  secret?: string;
+  headers?: Record<string, string>;
+  is_active: boolean;
+  user_id?: number;
+  last_triggered_at?: string;
+  success_count: number;
+  failure_count: number;
+  created_at: string;
+  updated_at: string;
+  user?: User;
+  success_rate?: number;
+}
+
+export interface WebhookLog {
+  id: number;
+  webhook_id: number;
+  event_type: string;
+  payload: any;
+  response_body?: string;
+  status_code?: number;
+  attempt: number;
+  success: boolean;
+  error_message?: string;
+  duration?: number;
+  headers?: Record<string, string>;
+  delivered_at?: string;
+  created_at: string;
+  webhook?: Webhook;
+}
+
+export interface WebhookEvent {
+  name: string;
+  description: string;
+  category: string;
+}
+
+export interface WebhookStats {
+  total_deliveries: number;
+  successful_deliveries: number;
+  failed_deliveries: number;
+  success_rate: number;
+  average_duration: string;
+  last_successful_delivery?: string;
+  last_failed_delivery?: string;
+}

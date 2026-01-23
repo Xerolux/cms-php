@@ -12,7 +12,14 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function () {
-            //
+            // Tenant routes (for tenant subdomains)
+            Route::middleware(['tenancy'])
+                ->prefix('api/v1')
+                ->group(base_path('routes/tenant.php'));
+
+            // Central routes (for central/super admin)
+            Route::prefix('api/v1')
+                ->group(base_path('routes/central.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
@@ -36,6 +43,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
             'session.timeout' => \App\Http\Middleware\SessionTimeout::class,
             'set.locale' => \App\Http\Middleware\SetLocale::class,
+            'tenancy.initialize' => \App\Http\Middleware\InitializeTenancyByDomain::class,
+            'tenancy.prevent_access' => \App\Http\Middleware\PreventAccessFromCentralDomains::class,
+            'tenancy.check_limits' => \App\Http\Middleware\CheckTenantLimits::class,
+        ]);
+
+        // Apply tenancy middleware globally (except central domains)
+        $middleware->group('tenancy', [
+            \App\Http\Middleware\InitializeTenancyByDomain::class,
+            \App\Http\Middleware\PreventAccessFromCentralDomains::class,
         ]);
 
         // Apply security headers and session tracking globally to API routes

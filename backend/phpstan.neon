@@ -1,0 +1,35 @@
+# PHPStan Configuration for XQUANTORIA Backend
+# Static Analysis Tool
+
+parameters:
+    level: 8
+
+    paths:
+        - app
+
+    excludePaths:
+        - app/Models/Metadata/*
+        - app/Services/*/ThirdParty/*
+
+    # Laravel specific rules
+    bootstrapFiles:
+        - vendor/autoload.php
+
+    # Ignore common Laravel patterns
+    ignoreErrors:
+        # Allow dynamic property access on models
+        - '#Access to an undefined property#'
+
+        # Allow array access on mixed types
+        - '#Access to an undefined property#'
+
+        # Ignore model relations dynamic methods
+        - '#Call to an undefined method#'
+
+    # Additional checks
+    checkMissingIterableValueType: true
+    reportStaticMethodSignatures: true
+    checkGenericClassInNonGenericObjectType: true
+
+    # Memory limit for large projects
+    memoryLimit: 2G

@@ -688,28 +688,82 @@ const systemHealthService = {
 };
 
 const aiService = {
+  async generateFullArticle(options: {
+    title?: string;
+    topic: string;
+    tone?: string;
+    target_audience?: string;
+    keywords?: string[];
+    word_count?: number;
+    outline?: string;
+    research_points?: string[];
+    temperature?: number;
+  }) {
+    const { data } = await api.post('/ai/generate-full-article', options);
+    return data;
+  },
+
   async generateContent(options: Record<string, unknown>) {
     const { data } = await api.post('/ai/generate-content', options);
     return data;
   },
 
-  async generateSummary(content: string) {
-    const { data } = await api.post('/ai/generate-summary', { content });
+  async generateSummary(content: string, max_length?: number) {
+    const { data } = await api.post('/ai/generate-summary', { content, max_length });
     return data;
   },
 
-  async generateKeywords(title: string, content: string) {
-    const { data } = await api.post('/ai/generate-keywords', { title, content });
+  async optimizeSEO(title: string, content: string) {
+    const { data } = await api.post('/ai/optimize-seo', { title, content });
     return data;
   },
 
-  async generateMetaDescription(content: string) {
-    const { data } = await api.post('/ai/generate-meta-description', { content });
+  async generateTags(title: string, content: string, count?: number) {
+    const { data } = await api.post('/ai/generate-tags', { title, content, count });
     return data;
   },
 
-  async suggestRelatedPosts(title: string, content: string) {
-    const { data } = await api.post('/ai/suggest-related', { title, content });
+  async generateKeywords(title: string, content: string, count?: number) {
+    const { data } = await api.post('/ai/generate-keywords', { title, content, count });
+    return data;
+  },
+
+  async checkPlagiarism(content: string, existing_content?: any[]) {
+    const { data } = await api.post('/ai/check-plagiarism', { content, existing_content });
+    return data;
+  },
+
+  async analyzeSentiment(content: string) {
+    const { data } = await api.post('/ai/analyze-sentiment', { content });
+    return data;
+  },
+
+  async suggestHeadlines(topic: string, content?: string, count?: number) {
+    const { data } = await api.post('/ai/suggest-headlines', { topic, content, count });
+    return data;
+  },
+
+  async translateContent(content: string, target_language: string, source_language?: string) {
+    const { data } = await api.post('/ai/translate-content', {
+      content,
+      target_language,
+      source_language,
+    });
+    return data;
+  },
+
+  async generateImage(prompt: string, size?: string, style?: string) {
+    const { data } = await api.post('/ai/generate-image', { prompt, size, style });
+    return data;
+  },
+
+  async generateMetaDescription(content: string, max_length?: number) {
+    const { data } = await api.post('/ai/generate-meta-description', { content, max_length });
+    return data;
+  },
+
+  async suggestRelatedPosts(title: string, content: string, count?: number) {
+    const { data } = await api.post('/ai/suggest-related', { title, content, count });
     return data;
   },
 
@@ -718,8 +772,23 @@ const aiService = {
     return data;
   },
 
-  async generateContentIdeas(topic: string) {
-    const { data } = await api.post('/ai/generate-ideas', { topic });
+  async generateContentIdeas(topic: string, count?: number) {
+    const { data } = await api.post('/ai/generate-ideas', { topic, count });
+    return data;
+  },
+
+  async chat(messages: Array<{ role: string; content: string }>, options?: any) {
+    const { data } = await api.post('/ai/chat', { messages, ...options });
+    return data;
+  },
+
+  async ragChat(query: string, context_documents?: Array<{ title: string; content: string }>) {
+    const { data } = await api.post('/ai/rag-chat', { query, context_documents });
+    return data;
+  },
+
+  async checkAvailability() {
+    const { data } = await api.get('/ai/check-availability');
     return data;
   },
 };
@@ -1053,6 +1122,73 @@ const imageProcessingService = {
   },
 };
 
+// Webhooks Service
+const webhooksService = {
+  async getAll(params?: any) {
+    const { data } = await api.get('/webhooks', { params });
+    return data;
+  },
+
+  async get(id: number) {
+    const { data } = await api.get(`/webhooks/${id}`);
+    return data;
+  },
+
+  async create(webhookData: any) {
+    const { data } = await api.post('/webhooks', webhookData);
+    return data;
+  },
+
+  async update(id: number, webhookData: any) {
+    const { data } = await api.put(`/webhooks/${id}`, webhookData);
+    return data;
+  },
+
+  async delete(id: number) {
+    await api.delete(`/webhooks/${id}`);
+  },
+
+  async getEvents() {
+    const { data } = await api.get('/webhooks/events');
+    return data;
+  },
+
+  async test(id: number) {
+    const { data } = await api.post(`/webhooks/${id}/test`);
+    return data;
+  },
+
+  async toggle(id: number) {
+    const { data } = await api.post(`/webhooks/${id}/toggle`);
+    return data;
+  },
+
+  async getLogs(id: number, params?: any) {
+    const { data } = await api.get(`/webhooks/${id}/logs`, { params });
+    return data;
+  },
+
+  async getLog(id: number, logId: number) {
+    const { data } = await api.get(`/webhooks/${id}/logs/${logId}`);
+    return data;
+  },
+
+  async retry(id: number, limit?: number) {
+    const { data } = await api.post(`/webhooks/${id}/retry`, { limit });
+    return data;
+  },
+
+  async regenerateSecret(id: number) {
+    const { data } = await api.post(`/webhooks/${id}/regenerate-secret`);
+    return data;
+  },
+
+  async getStats(id: number) {
+    const { data } = await api.get(`/webhooks/${id}/stats`);
+    return data;
+  },
+};
+
 export default api;
 export {
   authService,
@@ -1082,4 +1218,5 @@ export {
   languageService,
   postRevisionService,
   imageProcessingService,
+  webhooksService,
 };
