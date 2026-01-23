@@ -1,4 +1,4 @@
-import axios, { type AxiosRequestConfig } from 'axios';
+import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -101,7 +101,7 @@ const authService = {
 };
 
 const postService = {
-  async getAll(params?: any) {
+  async getAll(params?: Record<string, unknown>) {
     const { data } = await api.get('/posts', { params });
     return data;
   },
@@ -111,12 +111,12 @@ const postService = {
     return data;
   },
 
-  async create(postData: any) {
+  async create(postData: Record<string, unknown>) {
     const { data } = await api.post('/posts', postData);
     return data;
   },
 
-  async update(id: string | number, postData: any) {
+  async update(id: string | number, postData: Record<string, unknown>) {
     const { data } = await api.put(`/posts/${id}`, postData);
     return data;
   },
@@ -136,12 +136,12 @@ const categoryService = {
     return data;
   },
 
-  async create(categoryData: any) {
+  async create(categoryData: Record<string, unknown>) {
     const { data } = await api.post('/categories', categoryData);
     return data;
   },
 
-  async update(id: string | number, categoryData: any) {
+  async update(id: string | number, categoryData: Record<string, unknown>) {
     const { data } = await api.put(`/categories/${id}`, categoryData);
     return data;
   },
@@ -157,12 +157,12 @@ const tagService = {
     return data;
   },
 
-  async create(tagData: any) {
+  async create(tagData: Record<string, unknown>) {
     const { data } = await api.post('/tags', tagData);
     return data;
   },
 
-  async update(id: string | number, tagData: any) {
+  async update(id: string | number, tagData: Record<string, unknown>) {
     const { data } = await api.put(`/tags/${id}`, tagData);
     return data;
   },
@@ -172,13 +172,18 @@ const tagService = {
   },
 };
 
+interface MediaMetadata {
+  alt_text?: string;
+  caption?: string;
+}
+
 const mediaService = {
-  async getAll(params?: any) {
+  async getAll(params?: Record<string, unknown>) {
     const { data } = await api.get('/media', { params });
     return data;
   },
 
-  async upload(file: File, metadata?: any) {
+  async upload(file: File, metadata?: MediaMetadata) {
     const formData = new FormData();
     formData.append('file', file);
     if (metadata?.alt_text) formData.append('alt_text', metadata.alt_text);
@@ -190,7 +195,7 @@ const mediaService = {
     return data;
   },
 
-  async update(id: string | number, metadata: any) {
+  async update(id: string | number, metadata: MediaMetadata) {
     const formData = new FormData();
     if (metadata.alt_text !== undefined) formData.append('alt_text', metadata.alt_text);
     if (metadata.caption !== undefined) formData.append('caption', metadata.caption);
@@ -206,13 +211,20 @@ const mediaService = {
   },
 };
 
+interface DownloadMetadata {
+  title: string;
+  description?: string;
+  access_level?: 'public' | 'registered' | 'premium';
+  expires_at?: string;
+}
+
 const downloadService = {
   async getAll() {
     const { data } = await api.get('/downloads');
     return data;
   },
 
-  async upload(file: File, metadata: any) {
+  async upload(file: File, metadata: DownloadMetadata) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('title', metadata.title);
@@ -246,12 +258,12 @@ const userService = {
     return data;
   },
 
-  async create(userData: any) {
+  async create(userData: Record<string, unknown>) {
     const { data } = await api.post('/users', userData);
     return data;
   },
 
-  async update(id: string | number, userData: any) {
+  async update(id: string | number, userData: Record<string, unknown>) {
     const { data } = await api.put(`/users/${id}`, userData);
     return data;
   },
@@ -289,7 +301,7 @@ const analyticsService = {
 };
 
 const searchService = {
-  async search(query: string, filters?: any) {
+  async search(query: string, filters?: Record<string, unknown>) {
     const { data } = await api.get('/search', {
       params: { q: query, ...filters },
     });
@@ -315,7 +327,7 @@ const searchService = {
     return data;
   },
 
-  async advancedSearch(params: any) {
+  async advancedSearch(params: Record<string, unknown>) {
     const { data } = await api.get('/search/advanced', { params });
     return data;
   },
@@ -332,12 +344,12 @@ const adService = {
     return data;
   },
 
-  async create(adData: any) {
+  async create(adData: Record<string, unknown>) {
     const { data } = await api.post('/ads', adData);
     return data;
   },
 
-  async update(id: string | number, adData: any) {
+  async update(id: string | number, adData: Record<string, unknown>) {
     const { data } = await api.put(`/ads/${id}`, adData);
     return data;
   },
@@ -348,7 +360,7 @@ const adService = {
 };
 
 const pageService = {
-  async getAll(params?: any) {
+  async getAll(params?: Record<string, unknown>) {
     const { data } = await api.get('/pages', { params });
     return data;
   },
@@ -363,12 +375,12 @@ const pageService = {
     return data;
   },
 
-  async create(pageData: any) {
+  async create(pageData: Record<string, unknown>) {
     const { data } = await api.post('/pages', pageData);
     return data;
   },
 
-  async update(id: string | number, pageData: any) {
+  async update(id: string | number, pageData: Record<string, unknown>) {
     const { data } = await api.put(`/pages/${id}`, pageData);
     return data;
   },
@@ -384,7 +396,7 @@ const pageService = {
 };
 
 const commentService = {
-  async getAll(params?: any) {
+  async getAll(params?: Record<string, unknown>) {
     const { data } = await api.get('/comments', { params });
     return data;
   },
@@ -394,12 +406,12 @@ const commentService = {
     return data;
   },
 
-  async create(commentData: any) {
+  async create(commentData: Record<string, unknown>) {
     const { data } = await api.post('/comments', commentData);
     return data;
   },
 
-  async update(id: string | number, commentData: any) {
+  async update(id: string | number, commentData: Record<string, unknown>) {
     const { data } = await api.put(`/comments/${id}`, commentData);
     return data;
   },
@@ -425,7 +437,7 @@ const commentService = {
 };
 
 const newsletterService = {
-  async getAll(params?: any) {
+  async getAll(params?: Record<string, unknown>) {
     const { data } = await api.get('/newsletters', { params });
     return data;
   },
@@ -435,12 +447,12 @@ const newsletterService = {
     return data;
   },
 
-  async create(newsletterData: any) {
+  async create(newsletterData: Record<string, unknown>) {
     const { data } = await api.post('/newsletters', newsletterData);
     return data;
   },
 
-  async update(id: string | number, newsletterData: any) {
+  async update(id: string | number, newsletterData: Record<string, unknown>) {
     const { data } = await api.put(`/newsletters/${id}`, newsletterData);
     return data;
   },
@@ -460,7 +472,7 @@ const newsletterService = {
   },
 
   // Subscribers
-  async getSubscribers(params?: any) {
+  async getSubscribers(params?: Record<string, unknown>) {
     const { data } = await api.get('/newsletter/subscribers', { params });
     return data;
   },
@@ -470,7 +482,7 @@ const newsletterService = {
     return data;
   },
 
-  async updateSubscriber(id: string | number, subscriberData: any) {
+  async updateSubscriber(id: string | number, subscriberData: Record<string, unknown>) {
     const { data } = await api.put(`/newsletter/subscribers/${id}`, subscriberData);
     return data;
   },
@@ -565,7 +577,7 @@ const twoFactorService = {
 };
 
 const backupService = {
-  async getAll(params?: any) {
+  async getAll(params?: Record<string, unknown>) {
     const { data } = await api.get('/backups', { params });
     return data;
   },
@@ -575,7 +587,7 @@ const backupService = {
     return data;
   },
 
-  async create(backupData: any) {
+  async create(backupData: Record<string, unknown>) {
     const { data } = await api.post('/backups', backupData);
     return data;
   },
@@ -585,7 +597,7 @@ const backupService = {
     window.open(url, '_blank');
   },
 
-  async restore(id: string | number, options: any) {
+  async restore(id: string | number, options: Record<string, unknown>) {
     const { data } = await api.post(`/backups/${id}/restore`, {
       ...options,
       confirm: true,
@@ -604,7 +616,7 @@ const backupService = {
 };
 
 const settingsService = {
-  async getAll(params?: any) {
+  async getAll(params?: Record<string, unknown>) {
     const { data } = await api.get('/settings', { params });
     return data;
   },
@@ -614,12 +626,12 @@ const settingsService = {
     return data;
   },
 
-  async update(key: string, value: any) {
+  async update(key: string, value: unknown) {
     const { data } = await api.put(`/settings/${key}`, { value });
     return data;
   },
 
-  async updateBulk(settings: { key: string; value: any }[]) {
+  async updateBulk(settings: { key: string; value: unknown }[]) {
     const { data } = await api.post('/settings/bulk', { settings });
     return data;
   },
@@ -636,7 +648,7 @@ const settingsService = {
 };
 
 const activityLogService = {
-  async getAll(params?: any) {
+  async getAll(params?: Record<string, unknown>) {
     const { data } = await api.get('/activity-logs', { params });
     return data;
   },
@@ -651,9 +663,9 @@ const activityLogService = {
     return data;
   },
 
-  async export(params?: any) {
+  async export(params?: Record<string, unknown>) {
     const url = `${window.location.origin}/api/v1/activity-logs/export`;
-    const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
+    const queryString = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
     window.open(url + queryString, '_blank');
   },
 
@@ -676,7 +688,7 @@ const systemHealthService = {
 };
 
 const aiService = {
-  async generateContent(options: any) {
+  async generateContent(options: Record<string, unknown>) {
     const { data } = await api.post('/ai/generate-content', options);
     return data;
   },
@@ -828,7 +840,7 @@ const socialMediaService = {
 
 // Schedule Service
 const scheduleService = {
-  async getAll(params?: any) {
+  async getAll(params?: Record<string, unknown>) {
     const { data } = await api.get('/schedule', { params });
     return data;
   },
@@ -919,7 +931,7 @@ const languageService = {
 
 // Post Revisions Service
 const postRevisionService = {
-  async getAll(postId: number, params?: any) {
+  async getAll(postId: number, params?: Record<string, unknown>) {
     const { data } = await api.get(`/posts/${postId}/revisions`, { params });
     return data;
   },
@@ -929,8 +941,8 @@ const postRevisionService = {
     return data;
   },
 
-  async create(postId: number, data: any) {
-    const { data: response } = await api.post(`/posts/${postId}/revisions`, data);
+  async create(postId: number, revisionData: Record<string, unknown>) {
+    const { data: response } = await api.post(`/posts/${postId}/revisions`, revisionData);
     return response;
   },
 

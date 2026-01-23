@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Input, AutoComplete, Card, List, Tag, Space, Typography, Button, Row, Col } from 'antd';
-import { SearchOutlined, FireOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { Input, AutoComplete, Card, List, Tag, Space, Typography, Button } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { searchService } from '../services/api';
 import type { Post, Category, Tag as TagType } from '../types';
 
 const { Search } = Input;
-const { Text, Paragraph } = Typography;
+const { Text } = Typography;
 
 const SearchBar: React.FC = () => {
   const [searchValue, setSearchValue] = useState('');

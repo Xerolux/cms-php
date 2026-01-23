@@ -3,7 +3,6 @@ import { Form, Input, Button, Card, Typography, message, Space, Divider, Checkbo
 import { UserOutlined, LockOutlined, MailOutlined, DashboardOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { authService } from '../services/api';
 
 const { Title, Text } = Typography;
 
@@ -23,11 +22,12 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     try {
       await login(values.email, values.password, rememberMe);
-      const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
+      const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/admin/dashboard';
       navigate(from, { replace: true });
       message.success('Erfolgreich eingeloggt!');
-    } catch (error: any) {
-      message.error(error.response?.data?.message || 'Login fehlgeschlagen');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      message.error(err.response?.data?.message || 'Login fehlgeschlagen');
     } finally {
       setLoading(false);
     }

@@ -55,7 +55,7 @@ const QuickSearch: React.FC<QuickSearchProps> = ({ visible, onClose }) => {
         // Search posts
         const postsResponse = await fetch(`/api/v1/posts?search=${encodeURIComponent(debouncedQuery)}&per_page=5`);
         const postsData = await postsResponse.json();
-        const posts = (postsData.data?.data || []).map((post: any) => ({
+        const posts = (postsData.data?.data || []).map((post: { id: number; title: string; excerpt?: string }) => ({
           id: post.id,
           title: post.title,
           type: 'post' as const,
@@ -66,7 +66,7 @@ const QuickSearch: React.FC<QuickSearchProps> = ({ visible, onClose }) => {
         // Search users
         const usersResponse = await fetch(`/api/v1/users?search=${encodeURIComponent(debouncedQuery)}&per_page=3`);
         const usersData = await usersResponse.json();
-        const users = (usersData.data?.data || []).map((user: any) => ({
+        const users = (usersData.data?.data || []).map((user: { id: number; name: string; email: string }) => ({
           id: user.id,
           title: user.name,
           type: 'user' as const,
@@ -77,7 +77,7 @@ const QuickSearch: React.FC<QuickSearchProps> = ({ visible, onClose }) => {
         // Search categories
         const catsResponse = await fetch(`/api/v1/categories?search=${encodeURIComponent(debouncedQuery)}&per_page=3`);
         const catsData = await catsResponse.json();
-        const categories = (catsData.data || []).map((cat: any) => ({
+        const categories = (catsData.data || []).map((cat: { id: number; name: string; description?: string }) => ({
           id: cat.id,
           title: cat.name,
           type: 'category' as const,
@@ -88,7 +88,7 @@ const QuickSearch: React.FC<QuickSearchProps> = ({ visible, onClose }) => {
         // Search tags
         const tagsResponse = await fetch(`/api/v1/tags?search=${encodeURIComponent(debouncedQuery)}&per_page=3`);
         const tagsData = await tagsResponse.json();
-        const tags = (tagsData.data || []).map((tag: any) => ({
+        const tags = (tagsData.data || []).map((tag: { id: number; name: string }) => ({
           id: tag.id,
           title: tag.name,
           type: 'tag' as const,

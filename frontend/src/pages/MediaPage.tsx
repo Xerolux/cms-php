@@ -18,8 +18,6 @@ import {
   Image,
   Switch,
   Radio,
-  Progress,
-  Slider,
   Divider,
   Alert,
   Typography,
@@ -28,8 +26,6 @@ import {
 import {
   PlusOutlined,
   DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
   UploadOutlined,
   FileImageOutlined,
   FilePdfOutlined,

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { message, Button, Badge, Space } from 'antd';
+import { message, Button, Badge } from 'antd';
 import { SyncOutlined, WifiOutlined } from '@ant-design/icons';
 
 export interface LiveUpdateConfig {
@@ -8,8 +8,8 @@ export interface LiveUpdateConfig {
   interval?: number; // for polling (ms)
   sseUrl?: string; // for SSE
   wsUrl?: string; // for WebSocket
-  onUpdate?: (data: any) => void;
-  onError?: (error: any) => void;
+  onUpdate?: (data: unknown) => void;
+  onError?: (error: unknown) => void;
 }
 
 export interface LiveUpdateResult {
@@ -24,7 +24,7 @@ export interface LiveUpdateResult {
  * Supports: Polling, Server-Sent Events (SSE), WebSocket
  */
 export const useLiveUpdates = (
-  fetchFn: () => Promise<any>,
+  fetchFn: () => Promise<unknown>,
   config: LiveUpdateConfig
 ): LiveUpdateResult => {
   const [isConnected, setIsConnected] = useState(false);
@@ -159,7 +159,7 @@ export const useLiveUpdates = (
  */
 export const withLiveUpdates = <P extends object>(
   WrappedComponent: React.ComponentType<P>,
-  fetchFn: () => Promise<any>,
+  fetchFn: () => Promise<unknown>,
   config: LiveUpdateConfig
 ) => {
   const WithLiveUpdates = (props: P) => {
@@ -171,8 +171,8 @@ export const withLiveUpdates = <P extends object>(
   return WithLiveUpdates;
 };
 
-function getDisplayName<P>(WrappedComponent: React.ComponentType<P>) {
-  return WrappedComponent.displayName || (WrappedComponent as any).name || 'Component';
+function getDisplayName<P>(WrappedComponent: React.ComponentType<P>): string {
+  return WrappedComponent.displayName || (WrappedComponent as { name?: string }).name || 'Component';
 }
 
 /**
@@ -183,6 +183,9 @@ interface LiveUpdatesButtonProps {
   lastUpdate: Date | null;
   onToggle: () => void;
 }
+
+type ButtonType = 'primary' | 'default' | 'dashed' | 'link' | 'text';
+type BadgeStatus = 'success' | 'processing' | 'default' | 'error' | 'warning';
 
 export const LiveUpdatesButton: React.FC<LiveUpdatesButtonProps> = ({
   isConnected,
@@ -202,13 +205,13 @@ export const LiveUpdatesButton: React.FC<LiveUpdatesButtonProps> = ({
   const icon = isConnected ? React.createElement(WifiOutlined) : React.createElement(SyncOutlined);
 
   const buttonProps = {
-    type: (isConnected ? 'primary' : 'default') as any,
+    type: (isConnected ? 'primary' : 'default') as ButtonType,
     icon: icon,
     onClick: onToggle,
   };
 
   const badgeProps = {
-    status: (isConnected ? 'processing' : 'default') as any,
+    status: (isConnected ? 'processing' : 'default') as BadgeStatus,
     dot: isConnected,
   };
 

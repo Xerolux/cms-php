@@ -14,10 +14,8 @@ import {
   Row,
   Col,
   Upload,
-  DatePicker,
   Statistic,
   Tooltip,
-  Progress,
 } from 'antd';
 import {
   PlusOutlined,

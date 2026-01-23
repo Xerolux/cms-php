@@ -37,8 +37,12 @@ const { Option } = Select;
 
 const SearchPage: React.FC = () => {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<any>(null);
-  const [trending, setTrending] = useState<any[]>([]);
+  const [results, setResults] = useState<{
+    posts: Post[];
+    categories: Category[];
+    tags: TagType[];
+  } | null>(null);
+  const [trending, setTrending] = useState<Array<{ query_text?: string; count?: number } | string>>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -47,7 +51,7 @@ const SearchPage: React.FC = () => {
   // Filters
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<TagType[]>([]);
-  const [authors, setAuthors] = useState<any[]>([]);
+  const [authors, setAuthors] = useState<Array<{ id: number; name: string }>>([]);
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [selectedAuthors, setSelectedAuthors] = useState<number[]>([]);
@@ -120,7 +124,7 @@ const SearchPage: React.FC = () => {
     setHasSearched(true);
 
     try {
-      const params: any = {};
+      const params: Record<string, unknown> = {};
       if (advanced || selectedCategories.length > 0 || selectedTags.length > 0 ||
           selectedAuthors.length > 0 || selectedStatus.length > 0 || dateRange) {
         // Advanced search
@@ -406,7 +410,7 @@ const SearchPage: React.FC = () => {
             <Card title="Categories" style={{ marginBottom: 16 }}>
               {results.categories?.length > 0 ? (
                 <Space wrap>
-                  {results.categories.map((cat: any) => (
+                  {results.categories.map((cat: Category & { posts_count?: number }) => (
                     <Tag
                       key={cat.id}
                       color="geekblue"
@@ -425,7 +429,7 @@ const SearchPage: React.FC = () => {
             <Card title="Tags">
               {results.tags?.length > 0 ? (
                 <Space wrap>
-                  {results.tags.map((tag: any) => (
+                  {results.tags.map((tag: TagType) => (
                     <Tag
                       key={tag.id}
                       color="purple"

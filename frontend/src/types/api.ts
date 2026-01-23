@@ -1,5 +1,5 @@
 // API Response Types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data: T;
   message?: string;
   errors?: Record<string, string[]>;
@@ -161,9 +161,11 @@ export interface Page {
 }
 
 // Settings Types
+export type SettingValue = string | number | boolean | Record<string, unknown> | null;
+
 export interface Setting {
   key: string;
-  value: any;
+  value: SettingValue;
   type: 'string' | 'number' | 'boolean' | 'json';
   group: string;
   description?: string;
@@ -198,7 +200,7 @@ export interface Plugin {
   description: string;
   author: string;
   status: 'active' | 'inactive';
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
 }
 
 // System Health Types
@@ -262,7 +264,7 @@ export interface PostRevision {
   id: number;
   post_id: number;
   user_id: number;
-  content: any;
+  content: Record<string, unknown>;
   title: string;
   status: string;
   revision_reason?: string;

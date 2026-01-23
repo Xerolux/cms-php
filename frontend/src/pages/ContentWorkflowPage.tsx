@@ -42,7 +42,7 @@ const ContentWorkflowPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<WorkflowStats | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<Array<{ id: number; name: string; email: string }>>([]);
   const [calendarData, setCalendarData] = useState<EditorialCalendar | null>(null);
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
 
@@ -121,8 +121,9 @@ const ContentWorkflowPage: React.FC = () => {
       message.success('User assigned successfully');
       setAssignModalVisible(false);
       fetchPosts();
-    } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to assign user');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      message.error(err.response?.data?.message || 'Failed to assign user');
     }
   };
 
@@ -153,8 +154,9 @@ const ContentWorkflowPage: React.FC = () => {
       setReviewModalVisible(false);
       fetchPosts();
       fetchStats();
-    } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to process review');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      message.error(err.response?.data?.message || 'Failed to process review');
     }
   };
 
@@ -235,7 +237,7 @@ const ContentWorkflowPage: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_: any, record: Post) => (
+      render: (_: unknown, record: Post) => (
         <Space>
           <Button
             type="link"

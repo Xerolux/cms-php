@@ -14,9 +14,6 @@ import {
   Col,
   Statistic,
   Typography,
-  Timeline,
-  Progress,
-  Popover,
   Alert,
   Drawer,
 } from 'antd';
@@ -24,13 +21,8 @@ import {
   FileTextOutlined,
   ExportOutlined,
   DeleteOutlined,
-  ReloadOutlined,
   SearchOutlined,
-  FilterOutlined,
   HistoryOutlined,
-  SafetyOutlined,
-  UserOutlined,
-  ClockCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { activityLogService } from '../services/api';
@@ -38,7 +30,7 @@ import type { ActivityLog, ActivityLogStats } from '../types';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
-const { Title, Text, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 
 const ActivityLogsPage: React.FC = () => {
   const [logs, setLogs] = useState<ActivityLog[]>([]);

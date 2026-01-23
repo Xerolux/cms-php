@@ -23,7 +23,6 @@ import {
   FolderOutlined,
   FolderOpenOutlined,
 } from '@ant-design/icons';
-import type { ColorPickerProps } from 'antd';
 import { categoryService } from '../services/api';
 import type { Category } from '../types';
 

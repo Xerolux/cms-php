@@ -29,7 +29,6 @@ import { commentService } from '../services/api';
 import type { Comment, PaginatedResponse } from '../types';
 
 const { TextArea } = Input;
-const { Text, Paragraph } = Typography;
 
 const CommentsPage: React.FC = () => {
   const [comments, setComments] = useState<Comment[]>([]);
@@ -45,7 +44,6 @@ const CommentsPage: React.FC = () => {
     status: 'all',
     post_id: undefined as number | undefined,
   });
-  const [posts, setPosts] = useState<any[]>([]);
 
   useEffect(() => {
     fetchComments();

@@ -10,7 +10,7 @@ const RegisterPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleRegister = async (values: any) => {
+  const handleRegister = async (values: { name: string; email: string; password: string; password_confirmation: string }) => {
     setLoading(true);
     try {
       await authService.register(
@@ -21,8 +21,9 @@ const RegisterPage: React.FC = () => {
       );
       message.success('Registrierung erfolgreich! Bitte überprüfe deine E-Mails zur Verifizierung.');
       navigate('/login');
-    } catch (error: any) {
-      message.error(error.response?.data?.message || 'Registrierung fehlgeschlagen');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      message.error(err.response?.data?.message || 'Registrierung fehlgeschlagen');
     } finally {
       setLoading(false);
     }

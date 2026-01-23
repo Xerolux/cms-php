@@ -268,7 +268,7 @@ const SystemHealthPage: React.FC = () => {
               <List
                 size="small"
                 dataSource={Object.entries(health.cache.stores)}
-                renderItem={([name, store]: any[]) => (
+                renderItem={([name, store]: [string, { driver: string; status: string }]) => (
                   <List.Item>
                     <Space>
                       <Tag color="blue">{name}</Tag>
@@ -294,7 +294,16 @@ const SystemHealthPage: React.FC = () => {
         style={{ marginBottom: 16 }}
       >
         <Row gutter={16}>
-          {Object.entries(health.storage).map(([name, disk]: [string, any]) => (
+          {Object.entries(health.storage).map(([name, disk]: [string, {
+            driver: string;
+            status: string;
+            usage?: {
+              total_gb: number;
+              used_gb: number;
+              free_gb: number;
+              usage_percent: number;
+            };
+          }]) => (
             <Col key={name} span={12} style={{ marginBottom: 16 }}>
               <Card size="small">
                 <Space direction="vertical" style={{ width: '100%' }}>

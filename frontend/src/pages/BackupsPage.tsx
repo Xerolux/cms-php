@@ -14,8 +14,6 @@ import {
   Col,
   Statistic,
   Tooltip,
-  Typography,
-  Progress,
   Descriptions,
   Alert,
   Checkbox,

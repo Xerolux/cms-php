@@ -21,7 +21,7 @@ const ResetPasswordPage: React.FC = () => {
     }
   }, [token, email, navigate]);
 
-  const handleFinish = async (values: any) => {
+  const handleFinish = async (values: { password: string; password_confirmation: string }) => {
     if (!token || !email) return;
 
     setLoading(true);
@@ -29,8 +29,9 @@ const ResetPasswordPage: React.FC = () => {
       await authService.resetPassword(email, token, values.password, values.password_confirmation);
       message.success('Passwort erfolgreich geändert! Du kannst dich jetzt einloggen.');
       navigate('/login');
-    } catch (error: any) {
-      message.error(error.response?.data?.message || 'Fehler beim Zurücksetzen des Passworts.');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      message.error(err.response?.data?.message || 'Fehler beim Zurücksetzen des Passworts.');
     } finally {
       setLoading(false);
     }

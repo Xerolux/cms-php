@@ -1,11 +1,15 @@
 import React from 'react';
 import { Breadcrumb as AntBreadcrumb } from 'antd';
-import { HomeOutlined } from '@ant-design/icons';
 import { useLocation, Link } from 'react-router-dom';
 
 interface BreadcrumbItem {
   path: string;
   name: string;
+}
+
+interface AntBreadcrumbItem {
+  title: string;
+  path: string;
 }
 
 const Breadcrumb: React.FC = () => {
@@ -43,16 +47,15 @@ const Breadcrumb: React.FC = () => {
   }
 
   const itemRender = (
-    route: any,
-    params: any,
-    routes: any[],
-    paths: string[]
+    route: AntBreadcrumbItem,
+    _params: unknown,
+    routes: AntBreadcrumbItem[]
   ) => {
     const isLast = routes.indexOf(route) === routes.length - 1;
     return isLast ? (
-      <span>{route.name}</span>
+      <span>{route.title}</span>
     ) : (
-      <Link to={route.path}>{route.name}</Link>
+      <Link to={route.path}>{route.title}</Link>
     );
   };
 

@@ -3,7 +3,6 @@ import { Card, Row, Col, Statistic, Table, Tag } from 'antd';
 import {
   FileTextOutlined,
   EyeOutlined,
-  UserOutlined,
   CheckCircleOutlined,
 } from '@ant-design/icons';
 import { postService } from '../services/api';

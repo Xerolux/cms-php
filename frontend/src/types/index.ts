@@ -218,10 +218,12 @@ export interface NewsletterSent {
   subscriber?: NewsletterSubscriber;
 }
 
+export type SettingValue = string | number | boolean | Record<string, unknown> | null;
+
 export interface Setting {
   id: number;
   key: string;
-  value: any;
+  value: SettingValue;
   type: 'text' | 'textarea' | 'number' | 'boolean' | 'select' | 'json' | 'image' | 'file';
   group: 'general' | 'seo' | 'media' | 'email' | 'security' | 'performance';
   display_name: string;
@@ -247,7 +249,7 @@ export interface PublicSettings {
   site_email?: string;
   locale?: string;
   seo_og_image?: string;
-  [key: string]: any;
+  [key: string]: string | number | boolean | undefined;
 }
 
 export interface ActivityLog {
@@ -257,8 +259,8 @@ export interface ActivityLog {
   model_type?: string;
   model_id?: number;
   description?: string;
-  old_values?: Record<string, any>;
-  new_values?: Record<string, any>;
+  old_values?: Record<string, unknown>;
+  new_values?: Record<string, unknown>;
   ip_address?: string;
   user_agent?: string;
   tags?: string;
@@ -306,7 +308,11 @@ export interface SystemHealth {
   };
   cache: {
     default: string;
-    stores: Record<string, any>;
+    stores: Record<string, {
+      driver: string;
+      status: string;
+      connection?: string;
+    }>;
   };
   storage: Record<string, {
     driver: string;
@@ -432,7 +438,7 @@ export interface Plugin {
   path: string;
   is_active: boolean;
   installed_at: string;
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
   hooks?: PluginHook[];
 }
 
@@ -501,8 +507,8 @@ export interface LiveUpdateConfig {
   interval?: number;
   sseUrl?: string;
   wsUrl?: string;
-  onUpdate?: (data: any) => void;
-  onError?: (error: any) => void;
+  onUpdate?: (data: unknown) => void;
+  onError?: (error: unknown) => void;
 }
 
 export interface LiveUpdateResult {
