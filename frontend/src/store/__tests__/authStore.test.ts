@@ -6,20 +6,12 @@ import { useAuthStore } from '../authStore';
 vi.mock('axios');
 const mockedAxios = axios as any;
 
-// Mock localStorage
-const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-};
-
-global.localStorage = localStorageMock as any;
-
 describe('AuthStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorageMock.getItem.mockReturnValue(null);
+    // Clear localStorage using the global mock from setup.ts
+    window.localStorage.clear();
+    // Reset store state
     useAuthStore.setState({ user: null, token: null, isAuthenticated: false });
   });
 
@@ -45,7 +37,7 @@ describe('AuthStore', () => {
     expect(authStore.user).toEqual(mockUser);
     expect(authStore.token).toBe(mockToken);
     expect(authStore.isAuthenticated).toBe(true);
-    expect(localStorageMock.setItem).toHaveBeenCalledWith('auth_token', mockToken);
+    expect(window.localStorage.getItem('auth_token')).toBe(mockToken);
   });
 
   it('should handle login failure', async () => {
@@ -73,7 +65,7 @@ describe('AuthStore', () => {
     expect(authStore.user).toBeNull();
     expect(authStore.token).toBeNull();
     expect(authStore.isAuthenticated).toBe(false);
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth_token');
+    expect(window.localStorage.getItem('auth_token')).toBeNull();
   });
 
   it('should update user profile locally', () => {

@@ -37,6 +37,8 @@ const mockedAxios = mockApi;
 describe('AuthService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Clear localStorage before each test
+    window.localStorage.clear();
   });
 
   it('should login user with valid credentials', async () => {

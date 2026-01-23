@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Modal, Progress, Button, Typography, Space, Alert } from 'antd';
 import { WarningOutlined, LogoutOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +23,14 @@ const SessionTimeoutWarning: React.FC<SessionTimeoutWarningProps> = ({
   const { logout, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
 
+  // Memoize handlers with useCallback to avoid unnecessary re-renders
+  const handleLogout = useCallback(() => {
+    setVisible(false);
+    setLoggedOut(true);
+    logout();
+    navigate('/login');
+  }, [logout, navigate]);
+
   // Check for user activity
   useEffect(() => {
     if (!enabled || !isAuthenticated) return;
@@ -33,17 +41,20 @@ const SessionTimeoutWarning: React.FC<SessionTimeoutWarningProps> = ({
     let timeoutId: number;
     let warningTimeoutId: number;
     let intervalId: number;
+    let isWarningVisible = false;
 
     const resetTimer = () => {
       clearTimeout(timeoutId);
       clearTimeout(warningTimeoutId);
       clearInterval(intervalId);
+      isWarningVisible = false;
       setVisible(false);
       setLoggedOut(false);
 
       // Show warning before timeout
       warningTimeoutId = setTimeout(() => {
         if (isAuthenticated) {
+          isWarningVisible = true;
           setVisible(true);
           setTimeLeft(warningTime * 60); // seconds
 
@@ -67,24 +78,11 @@ const SessionTimeoutWarning: React.FC<SessionTimeoutWarningProps> = ({
       }, TIMEOUT_MS);
     };
 
-    const handleLogout = () => {
-      setVisible(false);
-      setLoggedOut(true);
-      logout();
-      navigate('/login');
-    };
-
-    const extendSession = () => {
-      // Reset timer by making an API call
-      resetTimer();
-      setVisible(false);
-    };
-
     // Track user activity
     const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
 
     const handleActivity = () => {
-      if (!visible) {
+      if (!isWarningVisible) {
         resetTimer();
       }
     };
@@ -106,7 +104,7 @@ const SessionTimeoutWarning: React.FC<SessionTimeoutWarningProps> = ({
         document.removeEventListener(event, handleActivity);
       });
     };
-  }, [enabled, isAuthenticated, timeout, warningTime]);
+  }, [enabled, isAuthenticated, timeout, warningTime, handleLogout]);
 
   const handleExtendSession = () => {
     // Send heartbeat to extend session
