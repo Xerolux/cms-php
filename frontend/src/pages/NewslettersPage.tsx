@@ -89,7 +89,7 @@ const NewslettersPage: React.FC = () => {
   const fetchNewsletters = async () => {
     setLoading(true);
     try {
-      const params: any = {
+      const params: Record<string, string | number> = {
         page: pagination.current,
         per_page: pagination.pageSize,
       };
@@ -111,7 +111,7 @@ const NewslettersPage: React.FC = () => {
   const fetchSubscribers = async () => {
     setLoading(true);
     try {
-      const params: any = {
+      const params: Record<string, string | number> = {
         page: pagination.current,
         per_page: pagination.pageSize,
       };
@@ -200,7 +200,7 @@ const NewslettersPage: React.FC = () => {
       message.success(`Newsletter sent to ${result.recipients_count} subscribers`);
       fetchNewsletters();
       fetchStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(error.response?.data?.message || 'Failed to send newsletter');
     }
   };
@@ -269,12 +269,12 @@ const NewslettersPage: React.FC = () => {
         { text: 'Scheduled', value: 'scheduled' },
         { text: 'Sent', value: 'sent' },
       ],
-      onFilter: (value: any, record: Newsletter) => record.status === value,
+      onFilter: (value: unknown, record: Newsletter) => record.status === value,
     },
     {
       title: 'Recipients',
       key: 'recipients',
-      render: (_: any, record: Newsletter) => (
+      render: (_: unknown, record: Newsletter) => (
         <Space direction="vertical" size={0}>
           <div>{record.recipients_count} sent</div>
           <div style={{ fontSize: 12, color: '#52c41a' }}>
@@ -299,7 +299,7 @@ const NewslettersPage: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       width: 200,
-      render: (_: any, record: Newsletter) => (
+      render: (_: unknown, record: Newsletter) => (
         <Space size="small">
           <Tooltip title="View">
             <Button type="text" icon={<EyeOutlined />} />
@@ -346,7 +346,7 @@ const NewslettersPage: React.FC = () => {
     {
       title: 'Subscriber',
       key: 'subscriber',
-      render: (_: any, record: NewsletterSubscriber) => (
+      render: (_: unknown, record: NewsletterSubscriber) => (
         <Space direction="vertical" size={0}>
           <div style={{ fontWeight: 500 }}>{record.email}</div>
           <div style={{ fontSize: 12, color: '#999' }}>
@@ -372,12 +372,12 @@ const NewslettersPage: React.FC = () => {
         { text: 'Unsubscribed', value: 'unsubscribed' },
         { text: 'Bounced', value: 'bounced' },
       ],
-      onFilter: (value: any, record: NewsletterSubscriber) => record.status === value,
+      onFilter: (value: unknown, record: NewsletterSubscriber) => record.status === value,
     },
     {
       title: 'Engagement',
       key: 'engagement',
-      render: (_: any, record: NewsletterSubscriber) => (
+      render: (_: unknown, record: NewsletterSubscriber) => (
         <Space direction="vertical" size={0}>
           <Progress
             percent={record.engagement_rate || 0}
@@ -404,7 +404,7 @@ const NewslettersPage: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       width: 120,
-      render: (_: any, record: NewsletterSubscriber) => (
+      render: (_: unknown, record: NewsletterSubscriber) => (
         <Space size="small">
           <Popconfirm
             title="Delete this subscriber?"

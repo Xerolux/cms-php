@@ -16,7 +16,7 @@ const ForgotPasswordPage: React.FC = () => {
       await authService.requestPasswordReset(values.email);
       message.success('Falls ein Konto mit dieser E-Mail existiert, wurde ein Link zum Zurücksetzen gesendet.');
       navigate('/login');
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Security: Always show success message or generic error to prevent email enumeration
       // But for debugging/admin we might show actual error if configured
       message.success('Falls ein Konto mit dieser E-Mail existiert, wurde ein Link zum Zurücksetzen gesendet.');

@@ -169,12 +169,12 @@ const PagesPage: React.FC = () => {
         { text: 'Full Width', value: 'full-width' },
         { text: 'Landing', value: 'landing' },
       ],
-      onFilter: (value: any, record: Page) => record.template === value,
+      onFilter: (value: unknown, record: Page) => record.template === value,
     },
     {
       title: 'Status',
       key: 'status',
-      render: (_: any, record: Page) => (
+      render: (_: unknown, record: Page) => (
         <Space>
           <Tag color={record.is_visible ? 'success' : 'default'}>
             {record.is_visible ? 'Visible' : 'Hidden'}
@@ -191,7 +191,7 @@ const PagesPage: React.FC = () => {
         { text: 'Hidden', value: 'hidden' },
         { text: 'In Menu', value: 'menu' },
       ],
-      onFilter: (value: any, record: Page) => {
+      onFilter: (value: unknown, record: Page) => {
         if (value === 'visible') return record.is_visible;
         if (value === 'hidden') return !record.is_visible;
         if (value === 'menu') return record.is_in_menu;
@@ -216,7 +216,7 @@ const PagesPage: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       width: 150,
-      render: (_: any, record: Page) => (
+      render: (_: unknown, record: Page) => (
         <Space>
           <Tooltip title="View">
             <Button

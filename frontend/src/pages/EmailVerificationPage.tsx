@@ -28,7 +28,7 @@ const EmailVerificationPage: React.FC = () => {
         setStatus('success');
         setMessageText('Deine E-Mail wurde erfolgreich verifiziert! Du hast nun Zugriff auf alle Funktionen.');
         message.success('E-Mail erfolgreich verifiziert');
-      } catch (error: any) {
+      } catch (error: unknown) {
         setStatus('error');
         setMessageText(error.response?.data?.message || 'Verifizierung fehlgeschlagen. Der Link ist möglicherweise ungültig oder abgelaufen.');
         message.error('Verifizierung fehlgeschlagen');
