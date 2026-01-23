@@ -155,11 +155,11 @@ const PostsPage: React.FC = () => {
       dataIndex: 'categories',
       key: 'categories',
       render: (categories: Category[]) => (
-        <>
+        <div>
           {categories?.map((cat) => (
             <Tag key={cat.id}>{cat.name}</Tag>
           ))}
-        </>
+        </div>
       ),
     },
     {

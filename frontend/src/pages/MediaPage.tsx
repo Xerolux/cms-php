@@ -22,6 +22,7 @@ import {
   Alert,
   Typography,
   Spin,
+  Progress,
 } from 'antd';
 import {
   PlusOutlined,
@@ -40,6 +41,8 @@ import {
   ThunderboltOutlined,
   ExpandOutlined,
   CompressOutlined,
+  EyeOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import { mediaService, imageProcessingService } from '../services/api';
