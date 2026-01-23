@@ -176,7 +176,7 @@ const PostsPage: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_: any, record: Post) => (
+      render: (_: unknown, record: Post) => (
         <Space>
           <Button
             type="link"

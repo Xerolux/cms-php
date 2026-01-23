@@ -190,7 +190,7 @@ const CategoriesPage: React.FC = () => {
         { text: 'Root Categories', value: 'root' },
         { text: 'Subcategories', value: 'sub' },
       ],
-      onFilter: (value: any, record: Category) => {
+      onFilter: (value: unknown, record: Category) => {
         if (value === 'root') return !record.parent_id;
         if (value === 'sub') return !!record.parent_id;
         return true;
@@ -224,13 +224,13 @@ const CategoriesPage: React.FC = () => {
         { text: 'German', value: 'de' },
         { text: 'English', value: 'en' },
       ],
-      onFilter: (value: any, record: Category) => record.language === value,
+      onFilter: (value: unknown, record: Category) => record.language === value,
     },
     {
       title: 'Actions',
       key: 'actions',
       width: 120,
-      render: (_: any, record: Category) => (
+      render: (_: unknown, record: Category) => (
         <Space>
           <Tooltip title="Edit">
             <Button

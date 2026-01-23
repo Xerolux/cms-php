@@ -117,7 +117,7 @@ const PostSharingPage: React.FC = () => {
       message.success('Post shared successfully!');
       setShareModalVisible(false);
       fetchStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(error.response?.data?.message || 'Failed to share post');
     } finally {
       setLoading(false);
@@ -144,7 +144,7 @@ const PostSharingPage: React.FC = () => {
       );
       message.success('Share scheduled successfully!');
       setShareModalVisible(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(error.response?.data?.message || 'Failed to schedule share');
     } finally {
       setLoading(false);
@@ -179,7 +179,7 @@ const PostSharingPage: React.FC = () => {
       );
       message.success(`Successfully shared ${publishedPosts.length} posts!`);
       fetchStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(error.response?.data?.message || 'Failed to batch share');
     } finally {
       setLoading(false);
@@ -235,7 +235,7 @@ const PostSharingPage: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_: any, record: SocialShare) => (
+      render: (_: unknown, record: SocialShare) => (
         <Button
           danger
           size="small"
@@ -353,7 +353,7 @@ const PostSharingPage: React.FC = () => {
             {
               title: 'Actions',
               key: 'actions',
-              render: (_: any, record: Post) => (
+              render: (_: unknown, record: Post) => (
                 <Button
                   type="primary"
                   icon={<ShareAltOutlined />}

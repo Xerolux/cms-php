@@ -47,7 +47,7 @@ interface Backup {
   file_size_formatted: string;
   items_count: number;
   description?: string;
-  options?: any;
+  options?: Record<string, unknown>;
   completed_at?: string;
   failed_at?: string;
   error_message?: string;
@@ -131,7 +131,7 @@ const BackupsPage: React.FC = () => {
       setBackupForm({ name: '', type: 'full', description: '' });
       fetchBackups();
       fetchStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(error.response?.data?.error || 'Failed to create backup');
     } finally {
       setLoading(false);
@@ -169,7 +169,7 @@ const BackupsPage: React.FC = () => {
 
       setRestoreModalVisible(false);
       setRestoreOptions({ restore_database: true, restore_files: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(error.response?.data?.error || 'Failed to restore backup');
     } finally {
       setRestoring(false);
@@ -248,7 +248,7 @@ const BackupsPage: React.FC = () => {
         { text: 'Database', value: 'database' },
         { text: 'Files', value: 'files' },
       ],
-      onFilter: (value: any, record: Backup) => record.type === value,
+      onFilter: (value: unknown, record: Backup) => record.type === value,
     },
     {
       title: 'Status',
@@ -264,7 +264,7 @@ const BackupsPage: React.FC = () => {
         { text: 'Creating', value: 'creating' },
         { text: 'Failed', value: 'failed' },
       ],
-      onFilter: (value: any, record: Backup) => record.status === value,
+      onFilter: (value: unknown, record: Backup) => record.status === value,
     },
     {
       title: 'Size',
@@ -282,7 +282,7 @@ const BackupsPage: React.FC = () => {
     {
       title: 'Duration',
       key: 'duration',
-      render: (_: any, record: Backup) => record.duration || '-',
+      render: (_: unknown, record: Backup) => record.duration || '-',
     },
     {
       title: 'Created',
@@ -296,7 +296,7 @@ const BackupsPage: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       width: 200,
-      render: (_: any, record: Backup) => (
+      render: (_: unknown, record: Backup) => (
         <Space size="small">
           {record.status === 'completed' && (
             <>

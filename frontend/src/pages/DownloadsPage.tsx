@@ -187,7 +187,7 @@ const DownloadsPage: React.FC = () => {
     {
       title: 'File',
       key: 'file',
-      render: (_: any, record: Download) => (
+      render: (_: unknown, record: Download) => (
         <Space>
           <div style={{ fontSize: 32 }}>{getFileIcon(record.mime_type)}</div>
           <div>
@@ -220,7 +220,7 @@ const DownloadsPage: React.FC = () => {
         { text: 'Registered', value: 'registered' },
         { text: 'Premium', value: 'premium' },
       ],
-      onFilter: (value: any, record: Download) => record.access_level === value,
+      onFilter: (value: unknown, record: Download) => record.access_level === value,
     },
     {
       title: 'Downloads',
@@ -269,7 +269,7 @@ const DownloadsPage: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       width: 150,
-      render: (_: any, record: Download) => (
+      render: (_: unknown, record: Download) => (
         <Space>
           <Tooltip title="Generate Download Link">
             <Button

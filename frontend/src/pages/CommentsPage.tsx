@@ -53,7 +53,7 @@ const CommentsPage: React.FC = () => {
   const fetchComments = async () => {
     setLoading(true);
     try {
-      const params: any = {
+      const params: Record<string, string | number> = {
         page: pagination.current,
         per_page: pagination.pageSize,
       };
@@ -149,7 +149,7 @@ const CommentsPage: React.FC = () => {
     {
       title: 'Author',
       key: 'author',
-      render: (_: any, record: Comment) => (
+      render: (_: unknown, record: Comment) => (
         <Space>
           {record.user ? (
             <>
@@ -200,12 +200,12 @@ const CommentsPage: React.FC = () => {
         { text: 'Rejected', value: 'rejected' },
         { text: 'Spam', value: 'spam' },
       ],
-      onFilter: (value: any, record: Comment) => record.status === value,
+      onFilter: (value: unknown, record: Comment) => record.status === value,
     },
     {
       title: 'Reactions',
       key: 'reactions',
-      render: (_: any, record: Comment) => (
+      render: (_: unknown, record: Comment) => (
         <Space size="large">
           <span style={{ color: '#52c41a' }}>
             👍 {record.likes_count}
@@ -229,7 +229,7 @@ const CommentsPage: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       width: 200,
-      render: (_: any, record: Comment) => (
+      render: (_: unknown, record: Comment) => (
         <Space size="small">
           <Tooltip title="View Details">
             <Button

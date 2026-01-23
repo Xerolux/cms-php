@@ -93,7 +93,7 @@ const MediaPage: React.FC = () => {
   const fetchMedia = async () => {
     setLoading(true);
     try {
-      const params: any = {
+      const params: Record<string, string | number> = {
         page: pagination.current,
         per_page: pagination.pageSize,
       };
@@ -116,7 +116,7 @@ const MediaPage: React.FC = () => {
     }
   };
 
-  const handleUpload = async (options: any) => {
+  const handleUpload = async (options: { file: File; onSuccess: (response: unknown) => void; onError: (error: Error) => void }) => {
     const { file } = options;
     setUploading(true);
     setUploadProgress(0);
@@ -273,7 +273,7 @@ const MediaPage: React.FC = () => {
       }
       setImageProcessingModalVisible(false);
       fetchMedia();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(error.response?.data?.message || `Failed to ${action} image`);
     } finally {
       setProcessingLoading(false);
@@ -294,7 +294,7 @@ const MediaPage: React.FC = () => {
       message.success('Image cropped successfully');
       setImageProcessingModalVisible(false);
       fetchMedia();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(error.response?.data?.message || 'Failed to crop image');
     } finally {
       setProcessingLoading(false);
@@ -313,7 +313,7 @@ const MediaPage: React.FC = () => {
       message.success('Image resized successfully');
       setImageProcessingModalVisible(false);
       fetchMedia();
-    } catch (error: any) {
+    } catch (error: unknown) {
       message.error(error.response?.data?.message || 'Failed to resize image');
     } finally {
       setProcessingLoading(false);
@@ -353,7 +353,7 @@ const MediaPage: React.FC = () => {
       title: 'Preview',
       key: 'preview',
       width: 100,
-      render: (_: any, record: Media) => (
+      render: (_: unknown, record: Media) => (
         <Image
           src={record.url}
           alt={record.alt_text || record.original_filename}
@@ -409,7 +409,7 @@ const MediaPage: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       width: 150,
-      render: (_: any, record: Media) => (
+      render: (_: unknown, record: Media) => (
         <Space>
           <Tooltip title="Preview">
             <Button
